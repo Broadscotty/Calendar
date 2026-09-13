@@ -35,6 +35,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         private const val EVENT_DOT_ROW_COUNT = 1
         private const val FONT_SCALE_FLOOR = 0.85f
         private const val FONT_SCALE_SAFETY = 0.97f
+        private const val MAX_EVENTS_PER_DAY = 7
     }
 
     private var textPaint: Paint
@@ -233,10 +234,10 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         applyFontScale(rowSlots)
-        layoutRows(rowSlots)
+        layoutRows()
     }
 
-    // shrink the effective text sizes so that every row fits on screen without scrolling
+    // shrink the effective text sizes so that the busiest week fits into one uniform row height
     private fun applyFontScale(rowSlots: IntArray) {
         normalTextSize = defaultNormalTextSize
         eventTitleHeight = defaultEventTitleHeight
@@ -246,25 +247,22 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         eventTitlePaint.textSize = eventTitleHeight.toFloat()
 
         val available = max(0, minimumContentHeight - weekDaysLetterHeight)
+        val uniformRowHeight = available / ROW_COUNT
         val fullDayNumberHeight = (defaultNormalTextSize * 1.8f).toInt()
         val fullLineStep = defaultEventTitleHeight + smallPadding * 2
-        var fullRows = 0
+        var maxRowSlots = 0
         for (y in 0 until ROW_COUNT) {
-            fullRows += fullDayNumberHeight + rowSlots[y] * fullLineStep + smallPadding * 2
+            maxRowSlots = max(maxRowSlots, rowSlots[y])
         }
 
-        if (fullRows <= available) {
+        val fullRowHeight = fullDayNumberHeight + maxRowSlots * fullLineStep + smallPadding * 2
+        if (fullRowHeight <= uniformRowHeight) {
             return
         }
 
-        var fixedCost = 0
-        var variableCost = 0f
-        for (y in 0 until ROW_COUNT) {
-            fixedCost += smallPadding * 2 * (rowSlots[y] + 1)
-            variableCost += defaultNormalTextSize * 1.8f + defaultEventTitleHeight * rowSlots[y]
-        }
-
-        val rawScale = (available - fixedCost) / variableCost
+        val fixedCost = maxRowSlots * smallPadding * 2 + smallPadding * 2
+        val variableCost = defaultNormalTextSize * 1.8f + defaultEventTitleHeight * maxRowSlots
+        val rawScale = (uniformRowHeight - fixedCost) / variableCost
         val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(FONT_SCALE_FLOOR, 1f)
 
         normalTextSize = (defaultNormalTextSize * scale).toInt()
@@ -272,34 +270,17 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         syncTextSizes()
     }
 
-    // compute the per-row heights so that the whole month fills exactly the available screen height
-    private fun layoutRows(rowSlots: IntArray) {
-        var neededHeight = weekDaysLetterHeight
+    // every week row gets the same height, filling the whole screen evenly
+    private fun layoutRows() {
+        val available = max(0, minimumContentHeight - weekDaysLetterHeight)
+        var remaining = available
+        val base = remaining / ROW_COUNT
         for (y in 0 until ROW_COUNT) {
-            rowHeights[y] = dayNumberHeight + rowSlots[y] * eventLineStep + smallPadding * 2
-            neededHeight += rowHeights[y]
+            rowHeights[y] = base
+            remaining -= base
         }
-
-        if (neededHeight > minimumContentHeight) {
-            var overflow = neededHeight - minimumContentHeight
-            for (y in ROW_COUNT - 1 downTo 0) {
-                if (overflow <= 0) break
-                val minRow = dayNumberHeight + eventLineStep + smallPadding * 2
-                val removable = min(overflow, rowHeights[y] - minRow)
-                rowHeights[y] -= removable
-                overflow -= removable
-            }
-        } else if (neededHeight < minimumContentHeight) {
-            val extra = (minimumContentHeight - neededHeight) / ROW_COUNT
-            if (extra > 0) {
-                for (y in 0 until ROW_COUNT) {
-                    rowHeights[y] += extra
-                    neededHeight += extra
-                }
-            }
-            if (neededHeight < minimumContentHeight) {
-                rowHeights[ROW_COUNT - 1] += minimumContentHeight - neededHeight
-            }
+        if (remaining > 0) {
+            rowHeights[ROW_COUNT - 1] += remaining
         }
 
         contentHeight = minimumContentHeight
@@ -460,37 +441,42 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
     private fun drawMonthEvents(canvas: Canvas, row: Int, rowTop: Int) {
         val (bars, singlesPerDay) = getRowEventsStructure(row)
+        val barBands = packBarBands(bars)
         val rowBottom = rowTop + rowHeights[row] - smallPadding
+        val bandCount = if (bars.isEmpty()) 0 else (barBands.maxOrNull()!! + 1)
 
-        var lineTop = rowTop + dayNumberHeight
         val drawnBars = ArrayList<RowEvent>()
-        for (bar in bars) {
+        for (i in bars.indices) {
+            val lineTop = rowTop + dayNumberHeight + barBands[i] * eventLineStep
             if (lineTop + eventLineStep > rowBottom) {
-                break
+                continue
             }
-            drawEventBar(canvas, bar.event, bar.firstCol, bar.lastCol, lineTop)
-            drawnBars.add(bar)
-            lineTop += eventLineStep
+            drawEventBar(canvas, bars[i].event, bars[i].firstCol, bars[i].lastCol, lineTop)
+            drawnBars.add(bars[i])
         }
-        val listTop = lineTop
-
-        val drawnPerDay = IntArray(COLUMN_COUNT)
-        for (col in 0 until COLUMN_COUNT) {
-            var dayTop = listTop
-            for (rowEvent in singlesPerDay[col]) {
-                if (dayTop + eventLineStep > rowBottom) {
-                    break
-                }
-                drawEventLine(canvas, rowEvent.event, rowEvent.firstCol, dayTop)
-                dayTop += eventLineStep
-                drawnPerDay[col]++
-            }
-        }
+        val listTop = rowTop + dayNumberHeight + bandCount * eventLineStep
 
         val visibleBarsPerDay = IntArray(COLUMN_COUNT)
         for (bar in drawnBars) {
             for (col in bar.firstCol..bar.lastCol) {
                 visibleBarsPerDay[col]++
+            }
+        }
+
+        val drawnPerDay = IntArray(COLUMN_COUNT)
+        for (col in 0 until COLUMN_COUNT) {
+            val daySingles = singlesPerDay[col]
+            val maxLines = max(0, MAX_EVENTS_PER_DAY - visibleBarsPerDay[col])
+            var dayTop = listTop
+            var count = 0
+            while (count < daySingles.size && count < maxLines) {
+                if (dayTop + eventLineStep > rowBottom) {
+                    break
+                }
+                drawEventLine(canvas, daySingles[count].event, daySingles[count].firstCol, dayTop)
+                dayTop += eventLineStep
+                drawnPerDay[col]++
+                count++
             }
         }
 
@@ -505,19 +491,22 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
     }
 
-    // how many stacked lines a row needs: the bars on top plus the busiest single day
+    // how many stacked lines a row needs: the packed bar bands on top plus the busiest single day
     private fun getRowSlots(row: Int): Int {
-        val rowEvents = getRowEvents(row)
-        var barCount = 0
-        val dayCounts = IntArray(COLUMN_COUNT)
-        for (rowEvent in rowEvents) {
-            if (rowEvent.lastCol > rowEvent.firstCol) {
-                barCount++
-            } else {
-                dayCounts[rowEvent.firstCol]++
+        val (bars, singlesPerDay) = getRowEventsStructure(row)
+        val bandCount = if (bars.isEmpty()) 0 else (packBarBands(bars).maxOrNull()!! + 1)
+        val coveringBars = IntArray(COLUMN_COUNT)
+        for (bar in bars) {
+            for (col in bar.firstCol..bar.lastCol) {
+                coveringBars[col]++
             }
         }
-        return barCount + (dayCounts.maxOrNull() ?: 0)
+        var maxDayCount = 0
+        for (col in 0 until COLUMN_COUNT) {
+            val cap = max(0, MAX_EVENTS_PER_DAY - coveringBars[col])
+            maxDayCount = max(maxDayCount, min(singlesPerDay[col].size, cap))
+        }
+        return bandCount + maxDayCount
     }
 
     private fun getRowEventsStructure(row: Int): Pair<ArrayList<RowEvent>, Array<ArrayList<RowEvent>>> {
@@ -530,7 +519,41 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
                 singlesPerDay[rowEvent.firstCol].add(rowEvent)
             }
         }
+        bars.sortWith(compareBy({ it.firstCol }, { it.lastCol }))
         return bars to singlesPerDay
+    }
+
+    private fun packBarBands(bars: List<RowEvent>): IntArray {
+        val barBands = IntArray(bars.size)
+        val bands = ArrayList<BooleanArray>()
+        for (i in bars.indices) {
+            val bar = bars[i]
+            var placed = -1
+            for (b in 0 until bands.size) {
+                val band = bands[b]
+                var overlaps = false
+                for (c in bar.firstCol..bar.lastCol) {
+                    if (band[c]) {
+                        overlaps = true
+                        break
+                    }
+                }
+                if (!overlaps) {
+                    placed = b
+                    break
+                }
+            }
+            if (placed == -1) {
+                placed = bands.size
+                bands.add(BooleanArray(COLUMN_COUNT))
+            }
+            val band = bands[placed]
+            for (c in bar.firstCol..bar.lastCol) {
+                band[c] = true
+            }
+            barBands[i] = placed
+        }
+        return barBands
     }
 
     private fun getRowEvents(row: Int): ArrayList<RowEvent> {
@@ -605,7 +628,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
     private fun getEventLineTitlePaint(event: Event): Paint {
         val curPaint = Paint(eventTitlePaint)
-        curPaint.color = textColor
+        curPaint.color = getEventLineColor(event)
         curPaint.isStrikeThruText = event.shouldStrikeThrough()
         return curPaint
     }
