@@ -22,6 +22,11 @@ import kotlin.math.min
 
 // used in the Monthly view fragment, 1 view per screen
 class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(context, attrs, defStyle) {
+    private class RowEvent(val event: Event) {
+        var firstCol = 0
+        var lastCol = 0
+    }
+
     companion object {
         private const val EVENT_DOT_COLUMN_COUNT = 3
         private const val EVENT_DOT_ROW_COUNT = 1
@@ -197,13 +202,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
         var maxEventCounts = IntArray(ROW_COUNT)
         for (y in 0 until ROW_COUNT) {
-            var maxEventCount = 1
-            for (x in 0 until COLUMN_COUNT) {
-                val day = days.getOrNull(y * COLUMN_COUNT + x)
-                val eventCount = day?.dayEvents?.size ?: 0
-                maxEventCount = max(maxEventCount, eventCount)
-            }
-            maxEventCounts[y] = maxEventCount
+            maxEventCounts[y] = getRowEvents(y).size
         }
 
         applyFontScale(maxEventCounts)
@@ -333,8 +332,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
                         if (!isDaySelected && !day.isToday && day.dayEvents.isNotEmpty()) {
                             drawEventDots(canvas, day, xPos, rowTop)
                         }
-                    } else {
-                        drawDayEvents(canvas, day, xPos, rowTop, dayWidth)
+                    } else if (x == 0) {
+                        drawMonthEvents(canvas, y, rowTop)
                     }
                 }
                 curId++
@@ -432,39 +431,76 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
     }
 
-    private fun drawDayEvents(canvas: Canvas, day: DayMonthly, xPos: Float, rowTop: Int, cellWidth: Float) {
-        val events = day.dayEvents.sortedWith(compareBy({ it.getIsAllDay() }, { it.startTS }, { it.title }))
-        if (events.isEmpty()) {
-            return
-        }
+    private fun drawMonthEvents(canvas: Canvas, row: Int, rowTop: Int) {
+        val rowEvents = getRowEvents(row)
+        val rowBottom = rowTop + rowHeights[row] - smallPadding
+        val capacity = ((rowBottom - (rowTop + dayNumberHeight)) / eventLineStep).coerceAtLeast(0)
 
         var lineTop = rowTop + dayNumberHeight
-        val rowBottom = rowTop + rowHeights[day.indexOnMonthView / COLUMN_COUNT] - smallPadding
-        for (event in events) {
-            if (lineTop + eventLineStep > rowBottom) {
+        var index = 0
+        for (rowEvent in rowEvents) {
+            if (index >= capacity) {
                 break
             }
-            drawEventLine(canvas, event, xPos, lineTop, cellWidth)
+            if (rowEvent.lastCol > rowEvent.firstCol) {
+                drawEventBar(canvas, rowEvent.event, rowEvent.firstCol, rowEvent.lastCol, lineTop)
+            } else {
+                drawEventLine(canvas, rowEvent.event, rowEvent.firstCol, lineTop)
+            }
             lineTop += eventLineStep
+            index++
         }
     }
 
-    private fun drawEventLine(canvas: Canvas, event: Event, xPos: Float, lineTop: Int, cellWidth: Float) {
-        val stripWidth = smallPadding * 2
-        val stripLeft = xPos + smallPadding
-        val stripTop = (lineTop + smallPadding).toFloat()
-        val stripRight = stripLeft + stripWidth
-        val stripBottom = (lineTop + eventLineStep - smallPadding).toFloat()
+    private fun getRowEvents(row: Int): ArrayList<RowEvent> {
+        val eventMap = LinkedHashMap<Long?, RowEvent>()
+        for (col in 0 until COLUMN_COUNT) {
+            val day = days.getOrNull(row * COLUMN_COUNT + col) ?: continue
+            for (event in day.dayEvents) {
+                val rowEvent = eventMap[event.id]
+                if (rowEvent == null) {
+                    eventMap[event.id] = RowEvent(event).apply {
+                        firstCol = col
+                        lastCol = col
+                    }
+                } else {
+                    rowEvent.lastCol = col
+                }
+            }
+        }
 
-        eventStripPaint.color = getEventLineColor(event)
+        val rowEvents = ArrayList(eventMap.values)
+        rowEvents.sortWith(compareBy({ !it.event.getIsAllDay() }, { it.event.startTS }, { it.event.title }))
+        return rowEvents
+    }
+
+    private fun drawEventBar(canvas: Canvas, event: Event, firstCol: Int, lastCol: Int, lineTop: Int) {
+        val left = firstCol * dayWidth + horizontalOffset + smallPadding
+        val right = (lastCol + 1) * dayWidth + horizontalOffset - smallPadding
+        val top = (lineTop + smallPadding).toFloat()
+        val bottom = (lineTop + eventLineStep - smallPadding).toFloat()
+
+        val barColor = getEventLineColor(event)
+        eventStripPaint.color = barColor
         val cornerRadius = smallPadding.toFloat()
-        canvas.drawRoundRect(stripLeft, stripTop, stripRight, stripBottom, cornerRadius, cornerRadius, eventStripPaint)
+        canvas.drawRoundRect(left, top, right, bottom, cornerRadius, cornerRadius, eventStripPaint)
 
+        val paint = getEventBarTitlePaint(barColor)
+        val baseline = (lineTop + eventTitleHeight + smallPadding).toFloat()
+        val textX = firstCol * dayWidth + horizontalOffset + smallPadding * 2
+        val availableWidth = (dayWidth - smallPadding * 4).coerceAtLeast(0f)
+        if (availableWidth > 0) {
+            val title = event.title.trim()
+            val ellipsized = TextUtils.ellipsize(title, eventTitlePaint, availableWidth, TextUtils.TruncateAt.END)
+            canvas.drawText(ellipsized.toString(), 0, ellipsized.length, textX, baseline, paint)
+        }
+    }
+
+    private fun drawEventLine(canvas: Canvas, event: Event, col: Int, lineTop: Int) {
         val paint = getEventLineTitlePaint(event)
         val baseline = (lineTop + eventTitleHeight + smallPadding).toFloat()
-        val textX = stripRight + smallPadding
-
-        val availableWidth = (cellWidth - (textX - xPos) - smallPadding * 2).coerceAtLeast(0f)
+        val textX = col * dayWidth + horizontalOffset + smallPadding
+        val availableWidth = (dayWidth - smallPadding * 2).coerceAtLeast(0f)
         if (availableWidth > 0) {
             val title = event.title.trim()
             val ellipsized = TextUtils.ellipsize(title, eventTitlePaint, availableWidth, TextUtils.TruncateAt.END)
@@ -488,8 +524,14 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
     private fun getEventLineTitlePaint(event: Event): Paint {
         val curPaint = Paint(eventTitlePaint)
-        curPaint.color = getEventLineColor(event)
+        curPaint.color = textColor
         curPaint.isStrikeThruText = event.shouldStrikeThrough()
+        return curPaint
+    }
+
+    private fun getEventBarTitlePaint(barColor: Int): Paint {
+        val curPaint = Paint(eventTitlePaint)
+        curPaint.color = barColor.getContrastColor()
         return curPaint
     }
 

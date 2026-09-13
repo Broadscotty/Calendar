@@ -27,6 +27,7 @@
     <dimen name="meta_text_size">14sp</dimen>
     <dimen name="day_text_size">17sp</dimen>
     <dimen name="month_text_size">22sp</dimen>
+    <dimen name="month_header_text_size">15sp</dimen>
 
     <dimen name="year_view_day_text_size">8sp</dimen>
 
@@ -36,7 +37,7 @@
     <dimen name="avatar_size">40dp</dimen>
     <dimen name="avatar_status_size">16dp</dimen>
 
-    <dimen name="quick_filter_height">48dp</dimen>
+    <dimen name="quick_filter_height">32dp</dimen>
     <dimen name="quick_filter_min_width">88dp</dimen>
     <dimen name="quick_filter_active_line_size">6dp</dimen>
     <dimen name="quick_filter_inactive_line_size">2dp</dimen>

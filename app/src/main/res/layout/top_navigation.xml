@@ -23,9 +23,9 @@
         android:layout_toStartOf="@+id/top_right_arrow"
         android:layout_toEndOf="@+id/top_left_arrow"
         android:gravity="center"
-        android:paddingTop="@dimen/normal_margin"
-        android:paddingBottom="@dimen/normal_margin"
-        android:textSize="@dimen/month_text_size"
+        android:paddingTop="@dimen/smaller_margin"
+        android:paddingBottom="@dimen/smaller_margin"
+        android:textSize="@dimen/month_header_text_size"
         tools:text="January" />
 
     <ImageView
