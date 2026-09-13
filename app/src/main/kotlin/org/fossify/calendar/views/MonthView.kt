@@ -396,7 +396,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         if (!event.getIsAllDay()) {
             val time = Formatter.getTimeFromTS(context, event.startTS)
             val timePaint = Paint(paint)
-            timePaint.color = paint.color.adjustAlpha(170)
+            timePaint.color = paint.color.adjustAlpha(MEDIUM_ALPHA)
             canvas.drawText(time, textX, baseline, timePaint)
             textX += timePaint.measureText(time) + smallPadding
         }
