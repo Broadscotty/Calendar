@@ -9,6 +9,8 @@ import androidx.fragment.app.Fragment
 import org.fossify.calendar.activities.MainActivity
 import org.fossify.calendar.databinding.FragmentMonthBinding
 import org.fossify.calendar.extensions.config
+import org.fossify.calendar.extensions.getViewBitmap
+import org.fossify.calendar.extensions.printBitmap
 import org.fossify.calendar.helpers.Config
 import org.fossify.calendar.helpers.DAY_CODE
 import org.fossify.calendar.helpers.Formatter
