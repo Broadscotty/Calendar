@@ -429,7 +429,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         val label = binding.appBarMonthLabel
         label.post {
             if (label.isVisible()) {
-                label.translationY = (binding.mainMenu.top + binding.mainMenu.height / 2) - (label.top + label.height / 2)
+                label.translationY = ((binding.mainMenu.top + binding.mainMenu.height / 2) - (label.top + label.height / 2)).toFloat()
             }
         }
     }
