@@ -33,7 +33,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     companion object {
         private const val EVENT_DOT_COLUMN_COUNT = 3
         private const val EVENT_DOT_ROW_COUNT = 1
-        private const val FONT_SCALE_FLOOR = 0.7f
+        private const val FONT_SCALE_FLOOR = 0.85f
         private const val FONT_SCALE_SAFETY = 0.97f
     }
 
@@ -123,7 +123,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             color = primaryColor
         }
 
-        val smallerTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.smaller_text_size)
+        val smallerTextSize = resources.getDimensionPixelSize(R.dimen.month_view_event_text_size)
         baseEventTitleHeight = smallerTextSize
         defaultEventTitleHeight = (baseEventTitleHeight * getMonthViewFontSizeScale()).toInt()
         eventTitleHeight = defaultEventTitleHeight
@@ -138,6 +138,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             color = primaryColor
             textSize = baseEventTitleHeight.toFloat()
             textAlign = Paint.Align.RIGHT
+            isFakeBoldText = true
             typeface = FontHelper.getTypeface(context)
         }
 
