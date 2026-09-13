@@ -74,6 +74,7 @@ class DayFragment : Fragment() {
         }
 
         val day = Formatter.getDayTitle(requireContext(), mDayCode)
+        (activity as? MainActivity)?.setToolbarTitle(day)
         topNavigationBinding.topValue.apply {
             text = day
             contentDescription = text

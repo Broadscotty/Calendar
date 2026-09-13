@@ -177,6 +177,9 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         setContentView(binding.root)
         appLaunched(org.fossify.calendar.BuildConfig.APPLICATION_ID)
         setupOptionsMenu()
+        binding.mainMenu.requireToolbar().setOnClickListener {
+            showGoToDateDialog()
+        }
         refreshMenuItems()
         setupEdgeToEdge(
             padBottomImeAndSystem = listOf(binding.searchHolder, binding.quickCalendarFilter),
@@ -371,6 +374,13 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
                 else -> return@setOnMenuItemClickListener false
             }
             return@setOnMenuItemClickListener true
+        }
+    }
+
+    fun setToolbarTitle(text: String) {
+        binding.mainMenu.requireToolbar().apply {
+            title = text
+            contentDescription = text
         }
     }
 

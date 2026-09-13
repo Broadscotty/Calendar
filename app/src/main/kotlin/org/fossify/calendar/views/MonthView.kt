@@ -76,7 +76,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private var selectedDayCoords = Point(-1, -1)
 
     private val dayNumberHeight: Int
-        get() = (normalTextSize * 1.8f).toInt()
+        get() = (normalTextSize * 1.4f).toInt()
 
     private val eventLineStep: Int
         get() = eventTitleHeight + smallPadding * 2
@@ -93,10 +93,10 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         highlightWeekends = config.highlightWeekends
 
         smallPadding = resources.displayMetrics.density.toInt()
-        baseNormalTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.normal_text_size)
+        baseNormalTextSize = resources.getDimensionPixelSize(R.dimen.month_view_text_size)
         normalTextSize = (baseNormalTextSize * getMonthViewFontSizeScale()).toInt()
         defaultNormalTextSize = normalTextSize
-        weekDaysLetterHeight = normalTextSize * 2
+        weekDaysLetterHeight = normalTextSize
 
         textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
@@ -241,14 +241,14 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private fun applyFontScale(rowSlots: IntArray) {
         normalTextSize = defaultNormalTextSize
         eventTitleHeight = defaultEventTitleHeight
-        weekDaysLetterHeight = defaultNormalTextSize * 2
+        weekDaysLetterHeight = defaultNormalTextSize
         textPaint.textSize = normalTextSize.toFloat()
         plusTextPaint.textSize = normalTextSize.toFloat()
         eventTitlePaint.textSize = eventTitleHeight.toFloat()
 
         val available = max(0, minimumContentHeight - weekDaysLetterHeight)
         val uniformRowHeight = available / ROW_COUNT
-        val fullDayNumberHeight = (defaultNormalTextSize * 1.8f).toInt()
+        val fullDayNumberHeight = (defaultNormalTextSize * 1.4f).toInt()
         val fullLineStep = defaultEventTitleHeight + smallPadding * 2
         var maxRowSlots = 0
         for (y in 0 until ROW_COUNT) {
@@ -261,7 +261,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         val fixedCost = maxRowSlots * smallPadding * 2 + smallPadding * 2
-        val variableCost = defaultNormalTextSize * 1.8f + defaultEventTitleHeight * maxRowSlots
+        val variableCost = defaultNormalTextSize * 1.4f + defaultEventTitleHeight * maxRowSlots
         val rawScale = (uniformRowHeight - fixedCost) / variableCost
         val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(FONT_SCALE_FLOOR, 1f)
 
@@ -287,7 +287,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     }
 
     private fun syncTextSizes() {
-        weekDaysLetterHeight = normalTextSize * 2
+        weekDaysLetterHeight = normalTextSize
         textPaint.textSize = normalTextSize.toFloat()
         plusTextPaint.textSize = normalTextSize.toFloat()
         eventTitlePaint.textSize = eventTitleHeight.toFloat()
@@ -376,7 +376,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             } else if (highlightWeekends && context.isWeekendIndex(i)) {
                 weekDayLetterPaint = getColoredPaint(weekendsTextColor)
             }
-            canvas.drawText(dayLetters[i], xPos, weekDaysLetterHeight * 0.7f, weekDayLetterPaint)
+            canvas.drawText(dayLetters[i], xPos, weekDaysLetterHeight * 0.8f, weekDayLetterPaint)
         }
     }
 
@@ -581,7 +581,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private fun drawEventBar(canvas: Canvas, event: Event, firstCol: Int, lastCol: Int, lineTop: Int) {
         val left = firstCol * dayWidth + horizontalOffset + smallPadding
         val right = (lastCol + 1) * dayWidth + horizontalOffset - smallPadding
-        val top = (lineTop + smallPadding).toFloat()
+        val top = (lineTop + smallPadding / 2).toFloat()
         val bottom = (lineTop + eventLineStep - smallPadding).toFloat()
 
         val barColor = getEventLineColor(event)
@@ -590,7 +590,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         canvas.drawRoundRect(left, top, right, bottom, cornerRadius, cornerRadius, eventStripPaint)
 
         val paint = getEventBarTitlePaint(barColor)
-        val baseline = (lineTop + eventTitleHeight + smallPadding).toFloat()
+        val baseline = (lineTop + eventTitleHeight + smallPadding / 2).toFloat()
         val textX = firstCol * dayWidth + horizontalOffset + smallPadding * 2
         val availableWidth = (dayWidth - smallPadding * 4).coerceAtLeast(0f)
         if (availableWidth > 0) {
