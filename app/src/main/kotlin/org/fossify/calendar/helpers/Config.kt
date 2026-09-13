@@ -9,6 +9,7 @@ import org.fossify.calendar.extensions.scheduleCalDAVSync
 import org.fossify.commons.extensions.getDefaultAlarmTitle
 import org.fossify.commons.helpers.BaseConfig
 import org.fossify.commons.helpers.DAY_MINUTES
+import org.fossify.commons.helpers.FONT_SIZE_MEDIUM
 import org.fossify.commons.helpers.YEAR_SECONDS
 
 class Config(context: Context) : BaseConfig(context) {
@@ -159,6 +160,10 @@ class Config(context: Context) : BaseConfig(context) {
     var showGrid: Boolean
         get() = prefs.getBoolean(SHOW_GRID, false)
         set(showGrid) = prefs.edit().putBoolean(SHOW_GRID, showGrid).apply()
+
+    var monthViewFontSize: Int
+        get() = prefs.getInt(MONTH_VIEW_FONT_SIZE, FONT_SIZE_MEDIUM)
+        set(monthViewFontSize) = prefs.edit().putInt(MONTH_VIEW_FONT_SIZE, monthViewFontSize).apply()
 
     var loopReminders: Boolean
         get() = prefs.getBoolean(LOOP_REMINDERS, false)

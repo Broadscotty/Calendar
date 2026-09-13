@@ -13,6 +13,9 @@ import org.fossify.calendar.helpers.ROW_COUNT
 import org.fossify.calendar.models.DayMonthly
 import org.fossify.calendar.models.Event
 import org.fossify.commons.extensions.*
+import org.fossify.commons.helpers.FONT_SIZE_EXTRA_LARGE
+import org.fossify.commons.helpers.FONT_SIZE_LARGE
+import org.fossify.commons.helpers.FONT_SIZE_SMALL
 import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.LOWER_ALPHA
 import org.fossify.commons.helpers.MEDIUM_ALPHA
@@ -30,7 +33,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     companion object {
         private const val EVENT_DOT_COLUMN_COUNT = 3
         private const val EVENT_DOT_ROW_COUNT = 1
-        private const val MIN_FONT_SCALE = 0.35f
+        private const val FONT_SCALE_FLOOR = 0.7f
         private const val FONT_SCALE_SAFETY = 0.97f
     }
 
@@ -41,6 +44,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private var plusTextPaint: Paint
     private var eventDotPaint: Paint
     private var eventStripPaint: Paint
+    private var moreTextPaint: Paint
     private var config = context.config
     private var dayWidth = 0f
     private var primaryColor = 0
@@ -48,8 +52,10 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private var weekendsTextColor = 0
     private var weekDaysLetterHeight = 0
     private var normalTextSize = 0
+    private var baseNormalTextSize = 0
     private var defaultNormalTextSize = 0
     private var eventTitleHeight = 0
+    private var baseEventTitleHeight = 0
     private var defaultEventTitleHeight = 0
     private var currDayOfWeek = 0
     private var smallPadding = 0
@@ -86,7 +92,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         highlightWeekends = config.highlightWeekends
 
         smallPadding = resources.displayMetrics.density.toInt()
-        normalTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.normal_text_size)
+        baseNormalTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.normal_text_size)
+        normalTextSize = (baseNormalTextSize * getMonthViewFontSizeScale()).toInt()
         defaultNormalTextSize = normalTextSize
         weekDaysLetterHeight = normalTextSize * 2
 
@@ -117,12 +124,20 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         val smallerTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.smaller_text_size)
-        defaultEventTitleHeight = smallerTextSize
-        eventTitleHeight = smallerTextSize
+        baseEventTitleHeight = smallerTextSize
+        defaultEventTitleHeight = (baseEventTitleHeight * getMonthViewFontSizeScale()).toInt()
+        eventTitleHeight = defaultEventTitleHeight
         eventTitlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
             textSize = smallerTextSize.toFloat()
             textAlign = Paint.Align.LEFT
+            typeface = FontHelper.getTypeface(context)
+        }
+
+        moreTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = primaryColor
+            textSize = baseEventTitleHeight.toFloat()
+            textAlign = Paint.Align.RIGHT
             typeface = FontHelper.getTypeface(context)
         }
 
@@ -160,10 +175,21 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         days = newDays
         showWeekNumbers = config.showWeekNumbers
         horizontalOffset = context.getWeekNumberWidth()
+        normalTextSize = (baseNormalTextSize * getMonthViewFontSizeScale()).toInt()
+        defaultNormalTextSize = normalTextSize
+        eventTitleHeight = (baseEventTitleHeight * getMonthViewFontSizeScale()).toInt()
+        defaultEventTitleHeight = eventTitleHeight
         initWeekDayLetters()
         setupCurrentDayOfWeekIndex()
         computeContentHeight()
         invalidate()
+    }
+
+    private fun getMonthViewFontSizeScale(): Float = when (config.monthViewFontSize) {
+        FONT_SIZE_SMALL -> 0.85f
+        FONT_SIZE_LARGE -> 1.15f
+        FONT_SIZE_EXTRA_LARGE -> 1.3f
+        else -> 1f
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -238,7 +264,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         val rawScale = (available - fixedCost) / variableCost
-        val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(MIN_FONT_SCALE, 1f)
+        val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(FONT_SCALE_FLOOR, 1f)
 
         normalTextSize = (defaultNormalTextSize * scale).toInt()
         eventTitleHeight = (defaultEventTitleHeight * scale).toInt()
@@ -438,6 +464,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
         var lineTop = rowTop + dayNumberHeight
         var index = 0
+        val drawnPerDay = IntArray(COLUMN_COUNT)
         for (rowEvent in rowEvents) {
             if (index >= capacity) {
                 break
@@ -447,8 +474,21 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             } else {
                 drawEventLine(canvas, rowEvent.event, rowEvent.firstCol, lineTop)
             }
+            for (col in rowEvent.firstCol..rowEvent.lastCol) {
+                drawnPerDay[col]++
+            }
             lineTop += eventLineStep
             index++
+        }
+
+        for (col in 0 until COLUMN_COUNT) {
+            val day = days.getOrNull(row * COLUMN_COUNT + col) ?: continue
+            val hidden = day.dayEvents.size - drawnPerDay[col]
+            if (hidden > 0) {
+                val x = (col + 1) * dayWidth + horizontalOffset - smallPadding
+                val baseline = rowBottom - smallPadding
+                canvas.drawText("+$hidden", x, baseline.toFloat(), moreTextPaint)
+            }
         }
     }
 

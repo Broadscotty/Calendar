@@ -194,6 +194,7 @@ class SettingsActivity : SimpleActivity() {
         setupReplaceDescription()
         setupWeekNumbers()
         setupShowGrid()
+        setupMonthViewFontSize()
         setupWeeklyStart()
         setupMidnightSpanEvents()
         setupAllowCustomizeDayCount()
@@ -623,6 +624,30 @@ class SettingsActivity : SimpleActivity() {
             settingsShowGrid.toggle()
             config.showGrid = settingsShowGrid.isChecked
         }
+    }
+
+    private fun setupMonthViewFontSize() = binding.apply {
+        settingsMonthFontSize.text = getMonthViewFontSizeText()
+        settingsMonthFontSizeHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(FONT_SIZE_SMALL, getString(org.fossify.commons.R.string.small)),
+                RadioItem(FONT_SIZE_MEDIUM, getString(org.fossify.commons.R.string.medium)),
+                RadioItem(FONT_SIZE_LARGE, getString(org.fossify.commons.R.string.large)),
+                RadioItem(FONT_SIZE_EXTRA_LARGE, getString(org.fossify.commons.R.string.extra_large))
+            )
+
+            RadioGroupDialog(this@SettingsActivity, items, config.monthViewFontSize) {
+                config.monthViewFontSize = it as Int
+                settingsMonthFontSize.text = getMonthViewFontSizeText()
+            }
+        }
+    }
+
+    private fun getMonthViewFontSizeText(): String = when (config.monthViewFontSize) {
+        FONT_SIZE_SMALL -> getString(org.fossify.commons.R.string.small)
+        FONT_SIZE_LARGE -> getString(org.fossify.commons.R.string.large)
+        FONT_SIZE_EXTRA_LARGE -> getString(org.fossify.commons.R.string.extra_large)
+        else -> getString(org.fossify.commons.R.string.medium)
     }
 
     @Deprecated("Not used on Oreo+ devices")
