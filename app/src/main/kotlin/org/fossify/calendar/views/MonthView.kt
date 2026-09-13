@@ -9,7 +9,6 @@ import android.view.View
 import org.fossify.calendar.R
 import org.fossify.calendar.extensions.*
 import org.fossify.calendar.helpers.COLUMN_COUNT
-import org.fossify.calendar.helpers.Formatter
 import org.fossify.calendar.helpers.ROW_COUNT
 import org.fossify.calendar.models.DayMonthly
 import org.fossify.calendar.models.Event
@@ -26,6 +25,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     companion object {
         private const val EVENT_DOT_COLUMN_COUNT = 3
         private const val EVENT_DOT_ROW_COUNT = 1
+        private const val MIN_FONT_SCALE = 0.35f
+        private const val FONT_SCALE_SAFETY = 0.97f
     }
 
     private var textPaint: Paint
@@ -42,7 +43,9 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private var weekendsTextColor = 0
     private var weekDaysLetterHeight = 0
     private var normalTextSize = 0
+    private var defaultNormalTextSize = 0
     private var eventTitleHeight = 0
+    private var defaultEventTitleHeight = 0
     private var currDayOfWeek = 0
     private var smallPadding = 0
     private var horizontalOffset = 0
@@ -79,6 +82,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
         smallPadding = resources.displayMetrics.density.toInt()
         normalTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.normal_text_size)
+        defaultNormalTextSize = normalTextSize
         weekDaysLetterHeight = normalTextSize * 2
 
         textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -108,6 +112,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         val smallerTextSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.smaller_text_size)
+        defaultEventTitleHeight = smallerTextSize
         eventTitleHeight = smallerTextSize
         eventTitlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
@@ -178,6 +183,9 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         if (isMonthDayView) {
+            normalTextSize = defaultNormalTextSize
+            eventTitleHeight = defaultEventTitleHeight
+            syncTextSizes()
             val headerless = max(0, minimumContentHeight - weekDaysLetterHeight)
             val rawRowHeight = headerless / ROW_COUNT
             for (y in 0 until ROW_COUNT) {
@@ -187,7 +195,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             return
         }
 
-        var neededHeight = weekDaysLetterHeight
+        var maxEventCounts = IntArray(ROW_COUNT)
         for (y in 0 until ROW_COUNT) {
             var maxEventCount = 1
             for (x in 0 until COLUMN_COUNT) {
@@ -195,11 +203,67 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
                 val eventCount = day?.dayEvents?.size ?: 0
                 maxEventCount = max(maxEventCount, eventCount)
             }
-            rowHeights[y] = dayNumberHeight + maxEventCount * eventLineStep + smallPadding * 2
+            maxEventCounts[y] = maxEventCount
+        }
+
+        applyFontScale(maxEventCounts)
+        layoutRows(maxEventCounts)
+    }
+
+    // shrink the effective text sizes so that every row fits on screen without scrolling
+    private fun applyFontScale(maxEventCounts: IntArray) {
+        normalTextSize = defaultNormalTextSize
+        eventTitleHeight = defaultEventTitleHeight
+        weekDaysLetterHeight = defaultNormalTextSize * 2
+        textPaint.textSize = normalTextSize.toFloat()
+        plusTextPaint.textSize = normalTextSize.toFloat()
+        eventTitlePaint.textSize = eventTitleHeight.toFloat()
+
+        val available = max(0, minimumContentHeight - weekDaysLetterHeight)
+        val fullDayNumberHeight = (defaultNormalTextSize * 1.8f).toInt()
+        val fullLineStep = defaultEventTitleHeight + smallPadding * 2
+        var fullRows = 0
+        for (y in 0 until ROW_COUNT) {
+            fullRows += fullDayNumberHeight + maxEventCounts[y] * fullLineStep + smallPadding * 2
+        }
+
+        if (fullRows <= available) {
+            return
+        }
+
+        var fixedCost = 0
+        var variableCost = 0f
+        for (y in 0 until ROW_COUNT) {
+            fixedCost += smallPadding * 2 * (maxEventCounts[y] + 1)
+            variableCost += defaultNormalTextSize * 1.8f + defaultEventTitleHeight * maxEventCounts[y]
+        }
+
+        val rawScale = (available - fixedCost) / variableCost
+        val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(MIN_FONT_SCALE, 1f)
+
+        normalTextSize = (defaultNormalTextSize * scale).toInt()
+        eventTitleHeight = (defaultEventTitleHeight * scale).toInt()
+        syncTextSizes()
+    }
+
+    // compute the per-row heights so that the whole month fills exactly the available screen height
+    private fun layoutRows(maxEventCounts: IntArray) {
+        var neededHeight = weekDaysLetterHeight
+        for (y in 0 until ROW_COUNT) {
+            rowHeights[y] = dayNumberHeight + maxEventCounts[y] * eventLineStep + smallPadding * 2
             neededHeight += rowHeights[y]
         }
 
-        if (neededHeight < minimumContentHeight) {
+        if (neededHeight > minimumContentHeight) {
+            var overflow = neededHeight - minimumContentHeight
+            for (y in ROW_COUNT - 1 downTo 0) {
+                if (overflow <= 0) break
+                val minRow = dayNumberHeight + eventLineStep + smallPadding * 2
+                val removable = min(overflow, rowHeights[y] - minRow)
+                rowHeights[y] -= removable
+                overflow -= removable
+            }
+        } else if (neededHeight < minimumContentHeight) {
             val extra = (minimumContentHeight - neededHeight) / ROW_COUNT
             if (extra > 0) {
                 for (y in 0 until ROW_COUNT) {
@@ -212,7 +276,14 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             }
         }
 
-        contentHeight = max(neededHeight, minimumContentHeight)
+        contentHeight = minimumContentHeight
+    }
+
+    private fun syncTextSizes() {
+        weekDaysLetterHeight = normalTextSize * 2
+        textPaint.textSize = normalTextSize.toFloat()
+        plusTextPaint.textSize = normalTextSize.toFloat()
+        eventTitlePaint.textSize = eventTitleHeight.toFloat()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -391,15 +462,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
         val paint = getEventLineTitlePaint(event)
         val baseline = (lineTop + eventTitleHeight + smallPadding).toFloat()
-        var textX = stripRight + smallPadding
-
-        if (!event.getIsAllDay()) {
-            val time = Formatter.getTimeFromTS(context, event.startTS)
-            val timePaint = Paint(paint)
-            timePaint.color = paint.color.adjustAlpha(MEDIUM_ALPHA)
-            canvas.drawText(time, textX, baseline, timePaint)
-            textX += timePaint.measureText(time) + smallPadding
-        }
+        val textX = stripRight + smallPadding
 
         val availableWidth = (cellWidth - (textX - xPos) - smallPadding * 2).coerceAtLeast(0f)
         if (availableWidth > 0) {
