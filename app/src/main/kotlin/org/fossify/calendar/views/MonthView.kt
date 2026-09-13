@@ -381,16 +381,16 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private fun drawEventLine(canvas: Canvas, event: Event, xPos: Float, lineTop: Int, cellWidth: Float) {
         val stripWidth = smallPadding * 2
         val stripLeft = xPos + smallPadding
-        val stripTop = lineTop + smallPadding
+        val stripTop = (lineTop + smallPadding).toFloat()
         val stripRight = stripLeft + stripWidth
-        val stripBottom = lineTop + eventLineStep - smallPadding
+        val stripBottom = (lineTop + eventLineStep - smallPadding).toFloat()
 
         eventStripPaint.color = getEventLineColor(event)
         val cornerRadius = smallPadding.toFloat()
         canvas.drawRoundRect(stripLeft, stripTop, stripRight, stripBottom, cornerRadius, cornerRadius, eventStripPaint)
 
         val paint = getEventLineTitlePaint(event)
-        val baseline = lineTop + eventTitleHeight + smallPadding
+        val baseline = (lineTop + eventTitleHeight + smallPadding).toFloat()
         var textX = stripRight + smallPadding
 
         if (!event.getIsAllDay()) {
