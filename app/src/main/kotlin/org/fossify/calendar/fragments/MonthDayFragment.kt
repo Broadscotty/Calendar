@@ -103,7 +103,6 @@ class MonthDayFragment : Fragment(), MonthlyCalendar, RefreshRecyclerViewListene
         mLastHash = newHash
 
         activity?.runOnUiThread {
-            (activity as? MainActivity)?.setToolbarTitle(month)
             binding.monthDayViewWrapper.updateDays(days, false) {
                 mSelectedDayCode = it.code
                 updateVisibleEvents()

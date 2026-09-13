@@ -63,6 +63,7 @@ class YearFragmentsHolder : MyFragmentHolder(), NavigationListener {
 
                 override fun onPageSelected(position: Int) {
                     currentYear = years[position]
+                    (activity as? MainActivity)?.setToolbarTitle(currentYear.toString())
                     val shouldGoToTodayBeVisible = shouldGoToTodayBeVisible()
                     if (isGoToTodayVisible != shouldGoToTodayBeVisible) {
                         (activity as? MainActivity)?.toggleGoToTodayVisibility(shouldGoToTodayBeVisible)
@@ -71,6 +72,7 @@ class YearFragmentsHolder : MyFragmentHolder(), NavigationListener {
                 }
             })
             currentItem = defaultYearlyPage
+            (activity as? MainActivity)?.setToolbarTitle(years[defaultYearlyPage].toString())
         }
     }
 

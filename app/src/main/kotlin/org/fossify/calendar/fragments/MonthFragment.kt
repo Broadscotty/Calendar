@@ -83,7 +83,6 @@ class MonthFragment : Fragment(), MonthlyCalendar {
         mLastHash = newHash
 
         activity?.runOnUiThread {
-            (activity as? MainActivity)?.setToolbarTitle(month)
             updateDays(days)
         }
     }

@@ -12,6 +12,7 @@ import android.provider.ContactsContract.CommonDataKinds
 import android.provider.ContactsContract.Contacts
 import android.provider.ContactsContract.Data
 import android.view.MenuItem
+import android.widget.RelativeLayout
 import android.widget.Toast
 import org.fossify.calendar.R
 import org.fossify.calendar.adapters.EventListAdapter
@@ -114,6 +115,7 @@ import org.fossify.commons.extensions.launchMoreAppsFromUsIntent
 import org.fossify.commons.extensions.queryCursor
 import org.fossify.commons.extensions.shortcutManager
 import org.fossify.commons.extensions.showErrorToast
+import org.fossify.commons.extensions.showKeyboard
 import org.fossify.commons.extensions.toast
 import org.fossify.commons.extensions.updateTextColors
 import org.fossify.commons.extensions.viewBinding
@@ -180,6 +182,10 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         binding.mainMenu.requireToolbar().setOnClickListener {
             showGoToDateDialog()
         }
+        binding.appBarMonthLabel.setOnClickListener {
+            showGoToDateDialog()
+        }
+        centerAppBarMonthLabel()
         refreshMenuItems()
         setupEdgeToEdge(
             padBottomImeAndSystem = listOf(binding.searchHolder, binding.quickCalendarFilter),
@@ -348,6 +354,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         mainMenu.requireToolbar().inflateMenu(R.menu.menu_main)
         mainMenu.toggleHideOnScroll(false)
         mainMenu.setupMenu()
+        setupSearchBar()
 
         mainMenu.onSearchTextChangedListener = { text ->
             searchQueryChanged(text)
@@ -377,10 +384,53 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         }
     }
 
+    private fun setupSearchBar() {
+        val searchMenu = binding.mainMenu
+        searchMenu.binding.apply {
+            topToolbarSearch.beGone()
+
+            val iconParams = topToolbarSearchIcon.layoutParams as RelativeLayout.LayoutParams
+            iconParams.addRule(RelativeLayout.START_OF, topToolbar.id)
+            topToolbarSearchIcon.layoutParams = iconParams
+
+            searchMenu.onSearchOpenListener = {
+                topToolbarSearch.beVisible()
+                this@MainActivity.binding.appBarMonthLabel.beGone()
+            }
+
+            searchMenu.onSearchClosedListener = {
+                topToolbarSearch.beGone()
+                this@MainActivity.binding.appBarMonthLabel.beVisible()
+            }
+
+            topToolbarSearchIcon.setOnClickListener {
+                when {
+                    searchMenu.isSearchOpen -> searchMenu.closeSearch()
+
+                    searchMenu.useArrowIcon && searchMenu.onNavigateBackClickListener != null ->
+                        searchMenu.onNavigateBackClickListener!!.invoke()
+
+                    else -> {
+                        topToolbarSearch.beVisible()
+                        this@MainActivity.showKeyboard(topToolbarSearch)
+                    }
+                }
+            }
+        }
+    }
+
     fun setToolbarTitle(text: String) {
-        binding.mainMenu.requireToolbar().apply {
-            title = text
-            contentDescription = text
+        this@MainActivity.binding.appBarMonthLabel.text = text
+        binding.mainMenu.requireToolbar().contentDescription = text
+        centerAppBarMonthLabel()
+    }
+
+    private fun centerAppBarMonthLabel() {
+        val label = binding.appBarMonthLabel
+        label.post {
+            if (label.isVisible()) {
+                label.translationY = binding.mainMenu.centerY() - label.centerY()
+            }
         }
     }
 

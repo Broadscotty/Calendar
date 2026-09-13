@@ -62,6 +62,7 @@ class DayFragmentsHolder : MyFragmentHolder(), NavigationListener {
 
                 override fun onPageSelected(position: Int) {
                     currentDayCode = codes[position]
+                    (activity as? MainActivity)?.setToolbarTitle(Formatter.getDayTitle(requireContext(), codes[position]))
                     val shouldGoToTodayBeVisible = shouldGoToTodayBeVisible()
                     if (isGoToTodayVisible != shouldGoToTodayBeVisible) {
                         (activity as? MainActivity)?.toggleGoToTodayVisibility(shouldGoToTodayBeVisible)
@@ -70,6 +71,7 @@ class DayFragmentsHolder : MyFragmentHolder(), NavigationListener {
                 }
             })
             currentItem = defaultDailyPage
+            (activity as? MainActivity)?.setToolbarTitle(Formatter.getDayTitle(requireContext(), codes[defaultDailyPage]))
         }
     }
 

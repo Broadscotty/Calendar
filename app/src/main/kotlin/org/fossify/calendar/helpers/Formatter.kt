@@ -111,6 +111,15 @@ object Formatter {
 
     fun getShortMonthName(context: Context, id: Int) = context.resources.getStringArray(org.fossify.commons.R.array.months_short)[id - 1]
 
+    fun getMonthTitle(context: Context, dateTime: DateTime): String {
+        var month = getMonthName(context, dateTime.monthOfYear)
+        val targetYear = dateTime.toString(YEAR_PATTERN)
+        if (targetYear != DateTime().toString(YEAR_PATTERN)) {
+            month += " $targetYear"
+        }
+        return month
+    }
+
     fun getHourPattern(context: Context) = if (context.config.use24HourFormat) PATTERN_HOURS_24 else PATTERN_HOURS_12
 
     fun getTimePattern(context: Context) = if (context.config.use24HourFormat) PATTERN_TIME_24 else PATTERN_TIME_12

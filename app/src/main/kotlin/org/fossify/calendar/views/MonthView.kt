@@ -35,7 +35,6 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         private const val EVENT_DOT_ROW_COUNT = 1
         private const val FONT_SCALE_FLOOR = 0.85f
         private const val FONT_SCALE_SAFETY = 0.97f
-        private const val MAX_EVENTS_PER_DAY = 7
     }
 
     private var textPaint: Paint
@@ -45,7 +44,6 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private var plusTextPaint: Paint
     private var eventDotPaint: Paint
     private var eventStripPaint: Paint
-    private var moreTextPaint: Paint
     private var config = context.config
     private var dayWidth = 0f
     private var primaryColor = 0
@@ -132,14 +130,6 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             color = textColor
             textSize = smallerTextSize.toFloat()
             textAlign = Paint.Align.LEFT
-            typeface = FontHelper.getTypeface(context)
-        }
-
-        moreTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = primaryColor
-            textSize = baseEventTitleHeight.toFloat()
-            textAlign = Paint.Align.RIGHT
-            isFakeBoldText = true
             typeface = FontHelper.getTypeface(context)
         }
 
@@ -315,8 +305,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
                     numberPaint.textAlign = Paint.Align.LEFT
                     numberPaint.getTextBounds(dayNumber, 0, dayNumber.length, dayTextRect)
                     val xPos = x * dayWidth + horizontalOffset
-                    val numberX = xPos + smallPadding * 2
-                    val numberBaseline = rowTop + smallPadding * 2 + numberPaint.textSize
+                    val numberX = xPos + smallPadding
+                    val numberBaseline = rowTop + smallPadding + numberPaint.textSize
                     val circleCenterX = numberX + dayTextRect.width() / 2f
                     val circleCenterY = numberBaseline - dayTextRect.height() / 2f
 
@@ -443,9 +433,9 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         val (bars, singlesPerDay) = getRowEventsStructure(row)
         val barBands = packBarBands(bars)
         val rowBottom = rowTop + rowHeights[row] - smallPadding
-        val bandCount = if (bars.isEmpty()) 0 else (barBands.maxOrNull()!! + 1)
 
         val drawnBars = ArrayList<RowEvent>()
+        var drawnBandCount = 0
         for (i in bars.indices) {
             val lineTop = rowTop + dayNumberHeight + barBands[i] * eventLineStep
             if (lineTop + eventLineStep > rowBottom) {
@@ -453,40 +443,21 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             }
             drawEventBar(canvas, bars[i].event, bars[i].firstCol, bars[i].lastCol, lineTop)
             drawnBars.add(bars[i])
+            drawnBandCount = max(drawnBandCount, barBands[i] + 1)
         }
-        val listTop = rowTop + dayNumberHeight + bandCount * eventLineStep
+        val listTop = rowTop + dayNumberHeight + drawnBandCount * eventLineStep
 
-        val visibleBarsPerDay = IntArray(COLUMN_COUNT)
-        for (bar in drawnBars) {
-            for (col in bar.firstCol..bar.lastCol) {
-                visibleBarsPerDay[col]++
-            }
-        }
-
-        val drawnPerDay = IntArray(COLUMN_COUNT)
         for (col in 0 until COLUMN_COUNT) {
             val daySingles = singlesPerDay[col]
-            val maxLines = max(0, MAX_EVENTS_PER_DAY - visibleBarsPerDay[col])
             var dayTop = listTop
             var count = 0
-            while (count < daySingles.size && count < maxLines) {
+            while (count < daySingles.size) {
                 if (dayTop + eventLineStep > rowBottom) {
                     break
                 }
                 drawEventLine(canvas, daySingles[count].event, daySingles[count].firstCol, dayTop)
                 dayTop += eventLineStep
-                drawnPerDay[col]++
                 count++
-            }
-        }
-
-        for (col in 0 until COLUMN_COUNT) {
-            val day = days.getOrNull(row * COLUMN_COUNT + col) ?: continue
-            val hidden = day.dayEvents.size - drawnPerDay[col] - visibleBarsPerDay[col]
-            if (hidden > 0) {
-                val x = (col + 1) * dayWidth + horizontalOffset - smallPadding
-                val baseline = rowBottom - smallPadding
-                canvas.drawText("+$hidden", x, baseline.toFloat(), moreTextPaint)
             }
         }
     }
@@ -495,16 +466,9 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private fun getRowSlots(row: Int): Int {
         val (bars, singlesPerDay) = getRowEventsStructure(row)
         val bandCount = if (bars.isEmpty()) 0 else (packBarBands(bars).maxOrNull()!! + 1)
-        val coveringBars = IntArray(COLUMN_COUNT)
-        for (bar in bars) {
-            for (col in bar.firstCol..bar.lastCol) {
-                coveringBars[col]++
-            }
-        }
         var maxDayCount = 0
         for (col in 0 until COLUMN_COUNT) {
-            val cap = max(0, MAX_EVENTS_PER_DAY - coveringBars[col])
-            maxDayCount = max(maxDayCount, min(singlesPerDay[col].size, cap))
+            maxDayCount = max(maxDayCount, singlesPerDay[col].size)
         }
         return bandCount + maxDayCount
     }

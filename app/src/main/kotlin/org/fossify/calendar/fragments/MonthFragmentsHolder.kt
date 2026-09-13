@@ -65,6 +65,7 @@ class MonthFragmentsHolder : MyFragmentHolder(), NavigationListener {
 
                 override fun onPageSelected(position: Int) {
                     currentDayCode = codes[position]
+                    updateMonthTitle(codes[position])
                     val shouldGoToTodayBeVisible = shouldGoToTodayBeVisible()
                     if (isGoToTodayVisible != shouldGoToTodayBeVisible) {
                         (activity as? MainActivity)?.toggleGoToTodayVisibility(shouldGoToTodayBeVisible)
@@ -73,7 +74,12 @@ class MonthFragmentsHolder : MyFragmentHolder(), NavigationListener {
                 }
             })
             currentItem = defaultMonthlyPage
+            updateMonthTitle(codes[defaultMonthlyPage])
         }
+    }
+
+    private fun updateMonthTitle(code: String) {
+        (activity as? MainActivity)?.setToolbarTitle(Formatter.getMonthTitle(requireContext(), Formatter.getDateTimeFromCode(code)))
     }
 
     private fun getMonths(code: String): List<String> {

@@ -180,7 +180,6 @@ class YearFragment : Fragment(), YearlyCalendar {
 
         topNavigationBinding.topValue.post {
             topNavigationBinding.topValue.text = mYear.toString()
-            (activity as? MainActivity)?.setToolbarTitle(mYear.toString())
         }
     }
 
