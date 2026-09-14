@@ -52,6 +52,8 @@ import org.fossify.calendar.helpers.EVENT_OCCURRENCE_TS
 import org.fossify.calendar.helpers.FETCH_INTERVAL
 import org.fossify.calendar.helpers.FLAG_ALL_DAY
 import org.fossify.calendar.helpers.FLAG_MISSING_YEAR
+import org.fossify.calendar.helpers.FOLD_POSTURE_COVER
+import org.fossify.calendar.helpers.FOLD_POSTURE_OPEN
 import org.fossify.calendar.helpers.Formatter
 import org.fossify.calendar.helpers.Formatter.DAYCODE_PATTERN
 import org.fossify.calendar.helpers.HOLIDAY_EVENT
@@ -1170,20 +1172,24 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     }
 
     private fun setupDefaultViewForFoldable() {
-        if (config.viewSelectionWasCustomized) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+            || !packageManager.hasSystemFeature("android.hardware.type.foldable")
+        ) {
             return
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-            && packageManager.hasSystemFeature("android.hardware.type.foldable")
-        ) {
-            val bounds = windowManager.currentWindowMetrics.bounds
-            val width = bounds.width()
-            val height = bounds.height()
-            val minDimension = min(width, height).toFloat()
-            val maxDimension = max(width, height).toFloat()
-            val isCoverLike = minDimension > 0 && maxDimension / minDimension > 1.7f
+        val bounds = windowManager.currentWindowMetrics.bounds
+        val width = bounds.width()
+        val height = bounds.height()
+        val minDimension = min(width, height).toFloat()
+        val maxDimension = max(width, height).toFloat()
+        val isCoverLike = minDimension > 0 && maxDimension / minDimension > 1.7f
+        val posture = if (isCoverLike) FOLD_POSTURE_COVER else FOLD_POSTURE_OPEN
+
+        if (config.lastFoldPosture != posture) {
+            config.viewSelectionWasCustomized = false
             config.storedView = if (isCoverLike) EVENTS_LIST_VIEW else MONTHLY_VIEW
+            config.lastFoldPosture = posture
         }
     }
 

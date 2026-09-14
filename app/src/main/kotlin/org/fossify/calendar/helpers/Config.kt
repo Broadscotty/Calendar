@@ -78,6 +78,10 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getBoolean(VIEW_CUSTOMIZED, false)
         set(customized) = prefs.edit().putBoolean(VIEW_CUSTOMIZED, customized).apply()
 
+    var lastFoldPosture: Int
+        get() = prefs.getInt(LAST_FOLD_POSTURE, -1)
+        set(posture) = prefs.edit().putInt(LAST_FOLD_POSTURE, posture).apply()
+
     var lastEventReminderMinutes1: Int
         get() = prefs.getInt(LAST_EVENT_REMINDER_MINUTES, 10)
         set(lastEventReminderMinutes) = prefs.edit()

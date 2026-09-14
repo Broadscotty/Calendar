@@ -48,6 +48,8 @@ import org.fossify.commons.interfaces.RefreshRecyclerViewListener
 import org.fossify.commons.views.MyLinearLayoutManager
 import org.fossify.commons.views.MyRecyclerView
 import org.joda.time.DateTime
+import kotlin.math.max
+import kotlin.math.min
 
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
@@ -60,7 +62,6 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var use24HourFormat = false
 
     private var mDayCode = ""
-    private val isDayList: Boolean get() = mDayCode.isNotEmpty()
 
     private lateinit var binding: FragmentEventListBinding
 
@@ -106,20 +107,12 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     }
 
     private fun checkEvents() {
-        if (isDayList) {
-            minFetchedTS = Formatter.getDayStartTS(mDayCode)
-            maxFetchedTS = Formatter.getDayEndTS(mDayCode)
-            requireContext().eventsHelper.getEvents(minFetchedTS, maxFetchedTS) { events ->
-                mEvents = events.filterTo(ArrayList()) { it.endTS > minFetchedTS }
-                receivedEvents(mEvents, INITIAL_EVENTS, true)
-            }
-            return
-        }
-
         if (!wereInitialEventsAdded) {
-            minFetchedTS =
-                DateTime().minusMinutes(requireContext().config.displayPastEvents).seconds()
-            maxFetchedTS = DateTime().plusMonths(6).seconds()
+            val now = DateTime()
+            val defaultMin = now.minusMinutes(requireContext().config.displayPastEvents).seconds()
+            val defaultMax = now.plusMonths(6).seconds()
+            minFetchedTS = if (mDayCode.isEmpty()) defaultMin else min(defaultMin, Formatter.getDayStartTS(mDayCode))
+            maxFetchedTS = if (mDayCode.isEmpty()) defaultMax else max(defaultMax, Formatter.getDayEndTS(mDayCode))
         }
 
         requireContext().eventsHelper.getEvents(minFetchedTS, maxFetchedTS) { events ->
@@ -149,11 +142,7 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         }
 
         mEvents = events
-        val listItems = if (isDayList) {
-            requireContext().getEventListItems(mEvents, forcedDayCode = mDayCode)
-        } else {
-            requireContext().getEventListItems(mEvents)
-        }
+        val listItems = requireContext().getEventListItems(mEvents)
 
         activity?.runOnUiThread {
             if (activity == null) {
@@ -174,24 +163,25 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                     }
                 }.apply {
                     binding.calendarEventsList.adapter = this
+                    if (mDayCode.isNotEmpty()) {
+                        scrollToAnchorDay()
+                    }
                 }
 
                 if (requireContext().areSystemAnimationsEnabled) {
                     binding.calendarEventsList.scheduleLayoutAnimation()
                 }
 
-                if (!isDayList) {
-                    binding.calendarEventsList.endlessScrollListener =
-                        object : MyRecyclerView.EndlessScrollListener {
-                            override fun updateTop() {
-                                fetchPreviousPeriod()
-                            }
-
-                            override fun updateBottom() {
-                                fetchNextPeriod()
-                            }
+                binding.calendarEventsList.endlessScrollListener =
+                    object : MyRecyclerView.EndlessScrollListener {
+                        override fun updateTop() {
+                            fetchPreviousPeriod()
                         }
-                }
+
+                        override fun updateBottom() {
+                            fetchNextPeriod()
+                        }
+                    }
 
                 binding.calendarEventsList.addOnScrollListener(object :
                     RecyclerView.OnScrollListener() {
@@ -237,6 +227,24 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                 }
 
                 binding.calendarEmptyListPlaceholder.setText(placeholderTextId)
+            }
+        }
+    }
+
+    private fun scrollToAnchorDay() {
+        val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
+        val targetIndex = adapter.listItems.indexOfFirst { it is ListSectionDay && it.code >= mDayCode }
+        if (targetIndex != -1) {
+            binding.calendarEventsList.post {
+                (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
+                    targetIndex,
+                    0
+                )
+                binding.calendarEventsList.onGlobalLayout {
+                    hasBeenScrolled = false
+                    (activity as? MainActivity)?.refreshItems()
+                    (activity as? MainActivity)?.refreshMenuItems()
+                }
             }
         }
     }
