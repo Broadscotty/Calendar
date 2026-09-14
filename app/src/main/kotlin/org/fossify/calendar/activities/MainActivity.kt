@@ -1179,6 +1179,18 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
 
     private fun setupDefaultViewForFoldable() {
         val posture = getCurrentFoldPosture()
+        val featureSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            && packageManager.hasSystemFeature("android.hardware.type.foldable")
+        val bounds = windowManager.currentWindowMetrics.bounds
+        val minDim = min(bounds.width(), bounds.height())
+        val maxDim = max(bounds.width(), bounds.height())
+        val ratio = if (minDim > 0) maxDim / minDim.toFloat() else 0f
+        val postureLabel = when (posture) {
+            FOLD_POSTURE_OPEN -> "OPEN"
+            FOLD_POSTURE_COVER -> "COVER"
+            else -> "NONE"
+        }
+        toast("Fold: feature=$featureSupported posture=$postureLabel sw=${resources.configuration.smallestScreenWidthDp}dp size=${bounds.width()}x${bounds.height()} ratio=%.2f".format(ratio))
         if (posture == FOLD_POSTURE_UNSUPPORTED || config.lastFoldPosture == posture) {
             return
         }
