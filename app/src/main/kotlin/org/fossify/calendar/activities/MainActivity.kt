@@ -2,10 +2,12 @@ package org.fossify.calendar.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.provider.ContactsContract.CommonDataKinds
@@ -142,6 +144,8 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.FragmentManager
+import kotlin.math.max
+import kotlin.math.min
 
 class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     override var isSearchBarEnabled = true
@@ -240,6 +244,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         checkIsViewIntent()
 
         if (!checkIsOpenIntent() && savedInstanceState == null) {
+            setupDefaultViewForFoldable()
             updateViewPager()
         }
 
@@ -1153,6 +1158,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     }
 
     private fun updateView(view: Int) {
+        config.viewSelectionWasCustomized = true
         binding.calendarFab.beVisibleIf(view != YEARLY_VIEW && view != WEEKLY_VIEW)
         val dateCode = getDateCodeToDisplay(view)
         config.storedView = view
@@ -1161,6 +1167,24 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         if (goToTodayButton?.isVisible == true) {
             shouldGoToTodayBeVisible = false
             refreshMenuItems()
+        }
+    }
+
+    private fun setupDefaultViewForFoldable() {
+        if (config.viewSelectionWasCustomized) {
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            && packageManager.hasSystemFeature(PackageManager.FEATURE_TYPE_FOLDABLE)
+        ) {
+            val bounds = windowManager.currentWindowMetrics.bounds
+            val width = bounds.width()
+            val height = bounds.height()
+            val minDimension = min(width, height).toFloat()
+            val maxDimension = max(width, height).toFloat()
+            val isCoverLike = minDimension > 0 && maxDimension / minDimension > 1.7f
+            config.storedView = if (isCoverLike) EVENTS_LIST_VIEW else MONTHLY_VIEW
         }
     }
 

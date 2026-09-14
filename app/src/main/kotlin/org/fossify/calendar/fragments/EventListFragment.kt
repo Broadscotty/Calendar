@@ -110,7 +110,7 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
             minFetchedTS = Formatter.getDayStartTS(mDayCode)
             maxFetchedTS = Formatter.getDayEndTS(mDayCode)
             requireContext().eventsHelper.getEvents(minFetchedTS, maxFetchedTS) { events ->
-                mEvents = events
+                mEvents = events.filterTo(ArrayList()) { it.endTS > minFetchedTS }
                 receivedEvents(mEvents, INITIAL_EVENTS, true)
             }
             return
@@ -149,7 +149,11 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         }
 
         mEvents = events
-        val listItems = requireContext().getEventListItems(mEvents)
+        val listItems = if (isDayList) {
+            requireContext().getEventListItems(mEvents, forcedDayCode = mDayCode)
+        } else {
+            requireContext().getEventListItems(mEvents)
+        }
 
         activity?.runOnUiThread {
             if (activity == null) {

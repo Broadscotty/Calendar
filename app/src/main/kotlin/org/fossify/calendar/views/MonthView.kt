@@ -438,22 +438,21 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         val rowBottom = rowTop + rowHeights[row] - smallPadding
         val barsTop = rowTop + contentTop
 
-        val drawnBars = ArrayList<RowEvent>()
-        var drawnBandCount = 0
+        val bandCoverage = IntArray(COLUMN_COUNT)
         for (i in bars.indices) {
             val lineTop = barsTop + barBands[i] * eventLineStep
             if (lineTop + eventLineStep > rowBottom) {
                 continue
             }
             drawEventBar(canvas, bars[i].event, bars[i].firstCol, bars[i].lastCol, lineTop)
-            drawnBars.add(bars[i])
-            drawnBandCount = max(drawnBandCount, barBands[i] + 1)
+            for (col in bars[i].firstCol..bars[i].lastCol) {
+                bandCoverage[col] = max(bandCoverage[col], barBands[i] + 1)
+            }
         }
-        val listTop = barsTop + drawnBandCount * eventLineStep
 
         for (col in 0 until COLUMN_COUNT) {
             val daySingles = singlesPerDay[col]
-            var dayTop = listTop
+            var dayTop = barsTop + bandCoverage[col] * eventLineStep
             var count = 0
             while (count < daySingles.size) {
                 if (dayTop + eventLineStep > rowBottom) {
@@ -560,7 +559,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         val paint = getEventBarTitlePaint(barColor)
         val baseline = (lineTop + eventTitleHeight + smallPadding / 2).toFloat()
         val textX = firstCol * dayWidth + horizontalOffset + smallPadding * 2
-        val availableWidth = (dayWidth - smallPadding * 4).coerceAtLeast(0f)
+        val availableWidth = ((lastCol - firstCol + 1) * dayWidth - smallPadding * 4).coerceAtLeast(0f)
         if (availableWidth > 0) {
             val title = event.title.trim()
             val ellipsized = TextUtils.ellipsize(title, eventTitlePaint, availableWidth, TextUtils.TruncateAt.END)

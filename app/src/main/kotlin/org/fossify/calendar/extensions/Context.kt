@@ -834,7 +834,8 @@ fun Context.addDayEvents(
 fun Context.getEventListItems(
     events: List<Event>,
     addSectionDays: Boolean = true,
-    addSectionMonths: Boolean = true
+    addSectionMonths: Boolean = true,
+    forcedDayCode: String? = null
 ): ArrayList<ListItem> {
     val listItems = ArrayList<ListItem>(events.size)
     val replaceDescription = config.replaceDescription
@@ -860,7 +861,7 @@ fun Context.getEventListItems(
     val todayCode = Formatter.getDayCodeFromTS(now)
 
     sorted.forEach {
-        val code = Formatter.getDayCodeFromTS(it.startTS)
+        val code = forcedDayCode ?: Formatter.getDayCodeFromTS(it.startTS)
         if (addSectionMonths) {
             val monthLabel = Formatter.getLongMonthYear(this, code)
             if (monthLabel != prevMonthLabel) {
@@ -873,7 +874,12 @@ fun Context.getEventListItems(
         if (code != prevCode && addSectionDays) {
             val day = Formatter.getDateDayTitle(code)
             val isToday = code == todayCode
-            val listSectionDay = ListSectionDay(day, code, isToday, !isToday && it.startTS < now)
+            val isPastSection = if (forcedDayCode != null) {
+                !isToday && Formatter.getDayStartTS(code) < now
+            } else {
+                !isToday && it.startTS < now
+            }
+            val listSectionDay = ListSectionDay(day, code, isToday, isPastSection)
             listItems.add(listSectionDay)
             prevCode = code
         }

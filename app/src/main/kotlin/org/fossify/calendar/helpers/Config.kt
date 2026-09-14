@@ -74,6 +74,10 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(VIEW, MONTHLY_VIEW)
         set(view) = prefs.edit().putInt(VIEW, view).apply()
 
+    var viewSelectionWasCustomized: Boolean
+        get() = prefs.getBoolean(VIEW_CUSTOMIZED, false)
+        set(customized) = prefs.edit().putBoolean(VIEW_CUSTOMIZED, customized).apply()
+
     var lastEventReminderMinutes1: Int
         get() = prefs.getInt(LAST_EVENT_REMINDER_MINUTES, 10)
         set(lastEventReminderMinutes) = prefs.edit()
