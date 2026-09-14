@@ -1178,7 +1178,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
 
     private fun setupDefaultViewForFoldable() {
         val posture = getCurrentFoldPosture()
-        if (posture == FOLD_POSTURE_UNSUPPORTED || config.lastFoldPosture == posture) {
+        if (posture == FOLD_POSTURE_UNSUPPORTED) {
             return
         }
 
@@ -1215,11 +1215,20 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         val lastSwdp = config.lastSwdp
         if (lastSwdp == 0) {
             config.lastSwdp = smallestScreenWidthDp
+            val maxWidth = windowManager.maximumWindowMetrics.bounds.width().toFloat()
+            val currentWidth = windowManager.currentWindowMetrics.bounds.width().toFloat()
+            if (maxWidth > currentWidth * 1.3f) {
+                return FOLD_POSTURE_COVER
+            }
             return FOLD_POSTURE_UNSUPPORTED
         }
 
         if (abs(smallestScreenWidthDp - lastSwdp) > 250) {
             config.lastSwdp = smallestScreenWidthDp
+            return if (smallestScreenWidthDp < 500) FOLD_POSTURE_COVER else FOLD_POSTURE_OPEN
+        }
+
+        if (config.lastFoldPosture != FOLD_POSTURE_UNSUPPORTED) {
             return if (smallestScreenWidthDp < 500) FOLD_POSTURE_COVER else FOLD_POSTURE_OPEN
         }
 
