@@ -92,6 +92,9 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     override fun onResume() {
         super.onResume()
         checkEvents()
+        (activity as? MainActivity)?.setToolbarTitle(
+            Formatter.getMonthTitle(requireContext(), DateTime())
+        )
         val use24Hour = requireContext().config.use24HourFormat
         if (use24Hour != use24HourFormat) {
             use24HourFormat = use24Hour
