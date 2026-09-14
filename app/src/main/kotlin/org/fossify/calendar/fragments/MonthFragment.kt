@@ -89,7 +89,7 @@ class MonthFragment : Fragment(), MonthlyCalendar {
 
     private fun updateDays(days: ArrayList<DayMonthly>) {
         binding.monthViewWrapper.updateDays(days, true) {
-            (activity as MainActivity).openDayFromMonthly(Formatter.getDateTimeFromCode(it.code))
+            (activity as MainActivity).openEventListFromMonthly(Formatter.getDateTimeFromCode(it.code))
         }
     }
 

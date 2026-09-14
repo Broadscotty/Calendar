@@ -21,6 +21,7 @@ import org.fossify.calendar.extensions.getViewBitmap
 import org.fossify.calendar.extensions.launchNewEventIntent
 import org.fossify.calendar.extensions.printBitmap
 import org.fossify.calendar.extensions.seconds
+import org.fossify.calendar.helpers.DAY_CODE
 import org.fossify.calendar.helpers.EVENTS_LIST_VIEW
 import org.fossify.calendar.helpers.FETCH_INTERVAL
 import org.fossify.calendar.helpers.Formatter
@@ -58,6 +59,9 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
 
     private var use24HourFormat = false
 
+    private var mDayCode = ""
+    private val isDayList: Boolean get() = mDayCode.isNotEmpty()
+
     private lateinit var binding: FragmentEventListBinding
 
     override val viewType = EVENTS_LIST_VIEW
@@ -80,6 +84,7 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         }
 
         use24HourFormat = requireContext().config.use24HourFormat
+        mDayCode = arguments?.getString(DAY_CODE) ?: ""
         return binding.root
     }
 
@@ -101,6 +106,16 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     }
 
     private fun checkEvents() {
+        if (isDayList) {
+            minFetchedTS = Formatter.getDayStartTS(mDayCode)
+            maxFetchedTS = Formatter.getDayEndTS(mDayCode)
+            requireContext().eventsHelper.getEvents(minFetchedTS, maxFetchedTS) { events ->
+                mEvents = events
+                receivedEvents(mEvents, INITIAL_EVENTS, true)
+            }
+            return
+        }
+
         if (!wereInitialEventsAdded) {
             minFetchedTS =
                 DateTime().minusMinutes(requireContext().config.displayPastEvents).seconds()
@@ -161,16 +176,18 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                     binding.calendarEventsList.scheduleLayoutAnimation()
                 }
 
-                binding.calendarEventsList.endlessScrollListener =
-                    object : MyRecyclerView.EndlessScrollListener {
-                        override fun updateTop() {
-                            fetchPreviousPeriod()
-                        }
+                if (!isDayList) {
+                    binding.calendarEventsList.endlessScrollListener =
+                        object : MyRecyclerView.EndlessScrollListener {
+                            override fun updateTop() {
+                                fetchPreviousPeriod()
+                            }
 
-                        override fun updateBottom() {
-                            fetchNextPeriod()
+                            override fun updateBottom() {
+                                fetchNextPeriod()
+                            }
                         }
-                    }
+                }
 
                 binding.calendarEventsList.addOnScrollListener(object :
                     RecyclerView.OnScrollListener() {
@@ -282,7 +299,7 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
 
     override fun shouldGoToTodayBeVisible() = hasBeenScrolled
 
-    override fun getNewEventDayCode() = Formatter.getTodayCode()
+    override fun getNewEventDayCode() = mDayCode.ifEmpty { Formatter.getTodayCode() }
 
     override fun printView() {
         binding.apply {

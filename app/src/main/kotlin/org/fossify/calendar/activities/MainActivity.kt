@@ -429,7 +429,10 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         val label = binding.appBarMonthLabel
         label.post {
             if (label.isVisible()) {
-                label.translationY = ((binding.mainMenu.top + binding.mainMenu.height / 2) - (label.top + label.height / 2)).toFloat()
+                val menu = binding.mainMenu
+                val pill = menu.binding.toolbarContainer
+                val pillCenterY = menu.top + menu.binding.searchBarContainer.top + pill.top + pill.height / 2
+                label.translationY = (pillCenterY - (label.top + label.height / 2)).toFloat()
             }
         }
     }
@@ -1292,6 +1295,25 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         resetActionBarTitle()
         binding.calendarFab.beVisible()
         showBackNavigationArrow()
+    }
+
+    fun openEventListFromMonthly(dateTime: DateTime) {
+        if (getCurrentFragment() is EventListFragment) {
+            return
+        }
+
+        val fragment = EventListFragment()
+        val bundle = Bundle()
+        bundle.putString(DAY_CODE, Formatter.getDayCodeFromDateTime(dateTime))
+        fragment.arguments = bundle
+        try {
+            supportFragmentManager.beginTransaction().replace(R.id.fragments_holder, fragment)
+                .addToBackStack(null)
+                .commit()
+            supportFragmentManager.executePendingTransactions()
+            showBackNavigationArrow()
+        } catch (e: Exception) {
+        }
     }
 
     fun openDayFromMonthly(dateTime: DateTime) {

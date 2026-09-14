@@ -76,6 +76,9 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
     private val dayNumberHeight: Int
         get() = (normalTextSize * 1.4f).toInt()
 
+    private val contentTop: Int
+        get() = smallPadding + normalTextSize
+
     private val eventLineStep: Int
         get() = eventTitleHeight + smallPadding * 2
 
@@ -238,7 +241,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
         val available = max(0, minimumContentHeight - weekDaysLetterHeight)
         val uniformRowHeight = available / ROW_COUNT
-        val fullDayNumberHeight = (defaultNormalTextSize * 1.4f).toInt()
+        val fullDayNumberHeight = defaultNormalTextSize + smallPadding
         val fullLineStep = defaultEventTitleHeight + smallPadding * 2
         var maxRowSlots = 0
         for (y in 0 until ROW_COUNT) {
@@ -251,7 +254,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         }
 
         val fixedCost = maxRowSlots * smallPadding * 2 + smallPadding * 2
-        val variableCost = defaultNormalTextSize * 1.4f + defaultEventTitleHeight * maxRowSlots
+        val variableCost = defaultNormalTextSize + smallPadding + defaultEventTitleHeight * maxRowSlots
         val rawScale = (uniformRowHeight - fixedCost) / variableCost
         val scale = (rawScale * FONT_SCALE_SAFETY).coerceIn(FONT_SCALE_FLOOR, 1f)
 
@@ -297,6 +300,10 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         var curId = 0
         for (y in 0 until ROW_COUNT) {
             val rowTop = getRowTop(y)
+            if (!isMonthDayView) {
+                drawMonthEvents(canvas, y, rowTop)
+            }
+
             for (x in 0 until COLUMN_COUNT) {
                 val day = days.getOrNull(curId)
                 if (day != null) {
@@ -326,12 +333,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
                     canvas.drawText(dayNumber, numberX, numberBaseline, numberPaint)
 
-                    if (isMonthDayView) {
-                        if (!isDaySelected && !day.isToday && day.dayEvents.isNotEmpty()) {
-                            drawEventDots(canvas, day, xPos, rowTop)
-                        }
-                    } else if (x == 0) {
-                        drawMonthEvents(canvas, y, rowTop)
+                    if (isMonthDayView && !isDaySelected && !day.isToday && day.dayEvents.isNotEmpty()) {
+                        drawEventDots(canvas, day, xPos, rowTop)
                     }
                 }
                 curId++
@@ -433,11 +436,12 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
         val (bars, singlesPerDay) = getRowEventsStructure(row)
         val barBands = packBarBands(bars)
         val rowBottom = rowTop + rowHeights[row] - smallPadding
+        val barsTop = rowTop + contentTop
 
         val drawnBars = ArrayList<RowEvent>()
         var drawnBandCount = 0
         for (i in bars.indices) {
-            val lineTop = rowTop + dayNumberHeight + barBands[i] * eventLineStep
+            val lineTop = barsTop + barBands[i] * eventLineStep
             if (lineTop + eventLineStep > rowBottom) {
                 continue
             }
@@ -445,7 +449,7 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
             drawnBars.add(bars[i])
             drawnBandCount = max(drawnBandCount, barBands[i] + 1)
         }
-        val listTop = rowTop + dayNumberHeight + drawnBandCount * eventLineStep
+        val listTop = barsTop + drawnBandCount * eventLineStep
 
         for (col in 0 until COLUMN_COUNT) {
             val daySingles = singlesPerDay[col]
