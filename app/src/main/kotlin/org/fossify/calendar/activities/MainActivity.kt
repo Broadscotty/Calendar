@@ -146,8 +146,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.FragmentManager
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.abs
 
 class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     override var isSearchBarEnabled = true
@@ -1179,18 +1178,6 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
 
     private fun setupDefaultViewForFoldable() {
         val posture = getCurrentFoldPosture()
-        val featureSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-            && packageManager.hasSystemFeature("android.hardware.type.foldable")
-        val bounds = windowManager.currentWindowMetrics.bounds
-        val minDim = min(bounds.width(), bounds.height())
-        val maxDim = max(bounds.width(), bounds.height())
-        val ratio = if (minDim > 0) maxDim / minDim.toFloat() else 0f
-        val postureLabel = when (posture) {
-            FOLD_POSTURE_OPEN -> "OPEN"
-            FOLD_POSTURE_COVER -> "COVER"
-            else -> "NONE"
-        }
-        toast("Fold: feature=$featureSupported posture=$postureLabel sw=${resources.configuration.smallestScreenWidthDp}dp size=${bounds.width()}x${bounds.height()} ratio=%.2f".format(ratio))
         if (posture == FOLD_POSTURE_UNSUPPORTED || config.lastFoldPosture == posture) {
             return
         }
@@ -1220,25 +1207,23 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     }
 
     private fun getCurrentFoldPosture(): Int {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-            || !packageManager.hasSystemFeature("android.hardware.type.foldable")
-        ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return FOLD_POSTURE_UNSUPPORTED
         }
 
         val smallestScreenWidthDp = resources.configuration.smallestScreenWidthDp
-        if (smallestScreenWidthDp < 500) {
-            return FOLD_POSTURE_COVER
+        val lastSwdp = config.lastSwdp
+        if (lastSwdp == 0) {
+            config.lastSwdp = smallestScreenWidthDp
+            return FOLD_POSTURE_UNSUPPORTED
         }
 
-        val bounds = windowManager.currentWindowMetrics.bounds
-        val minDimension = min(bounds.width(), bounds.height()).toFloat()
-        val maxDimension = max(bounds.width(), bounds.height()).toFloat()
-        return if (minDimension > 0 && maxDimension / minDimension > 1.7f) {
-            FOLD_POSTURE_COVER
-        } else {
-            FOLD_POSTURE_OPEN
+        if (abs(smallestScreenWidthDp - lastSwdp) > 250) {
+            config.lastSwdp = smallestScreenWidthDp
+            return if (smallestScreenWidthDp < 500) FOLD_POSTURE_COVER else FOLD_POSTURE_OPEN
         }
+
+        return FOLD_POSTURE_UNSUPPORTED
     }
 
     private fun getDateCodeToDisplay(newView: Int): String? {

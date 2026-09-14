@@ -82,6 +82,10 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(LAST_FOLD_POSTURE, FOLD_POSTURE_UNSUPPORTED)
         set(posture) = prefs.edit().putInt(LAST_FOLD_POSTURE, posture).apply()
 
+    var lastSwdp: Int
+        get() = prefs.getInt(LAST_SWDP, 0)
+        set(swdp) = prefs.edit().putInt(LAST_SWDP, swdp).apply()
+
     var lastEventReminderMinutes1: Int
         get() = prefs.getInt(LAST_EVENT_REMINDER_MINUTES, 10)
         set(lastEventReminderMinutes) = prefs.edit()
