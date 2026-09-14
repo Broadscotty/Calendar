@@ -2,7 +2,6 @@ package org.fossify.calendar.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Icon
@@ -1176,7 +1175,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-            && packageManager.hasSystemFeature(PackageManager.FEATURE_TYPE_FOLDABLE)
+            && packageManager.hasSystemFeature("android.hardware.type.foldable")
         ) {
             val bounds = windowManager.currentWindowMetrics.bounds
             val width = bounds.width()
