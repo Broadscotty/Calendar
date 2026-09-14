@@ -54,6 +54,7 @@ import org.fossify.calendar.helpers.FLAG_ALL_DAY
 import org.fossify.calendar.helpers.FLAG_MISSING_YEAR
 import org.fossify.calendar.helpers.FOLD_POSTURE_COVER
 import org.fossify.calendar.helpers.FOLD_POSTURE_OPEN
+import org.fossify.calendar.helpers.FOLD_POSTURE_UNSUPPORTED
 import org.fossify.calendar.helpers.Formatter
 import org.fossify.calendar.helpers.Formatter.DAYCODE_PATTERN
 import org.fossify.calendar.helpers.HOLIDAY_EVENT
@@ -176,6 +177,7 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     private var maxFetchedSearchTS = 0L
     private var searchResultEvents = ArrayList<Event>()
     private var bottomItemAtRefresh: ListItem? = null
+    private var mOpeningFromIntent = false
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -244,7 +246,8 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
 
         checkIsViewIntent()
 
-        if (!checkIsOpenIntent() && savedInstanceState == null) {
+        mOpeningFromIntent = checkIsOpenIntent()
+        if (!mOpeningFromIntent && savedInstanceState == null) {
             setupDefaultViewForFoldable()
             updateViewPager()
         }
@@ -270,6 +273,9 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
 
     override fun onResume() {
         super.onResume()
+        if (!mOpeningFromIntent) {
+            setupDefaultViewForFoldableIfNeeded()
+        }
         if (mStoredTextColor != getProperTextColor() || mStoredBackgroundColor != getProperBackgroundColor() || mStoredPrimaryColor != getProperPrimaryColor()
             || mStoredDayCode != Formatter.getTodayCode() || mStoredDimPastEvents != config.dimPastEvents || mStoredDimCompletedTasks != config.dimCompletedTasks
             || mStoredHighlightWeekends != config.highlightWeekends || mStoredHighlightWeekendsColor != config.highlightWeekendsColor
@@ -1172,24 +1178,54 @@ class MainActivity : SimpleActivity(), RefreshRecyclerViewListener {
     }
 
     private fun setupDefaultViewForFoldable() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-            || !packageManager.hasSystemFeature("android.hardware.type.foldable")
-        ) {
+        val posture = getCurrentFoldPosture()
+        if (posture == FOLD_POSTURE_UNSUPPORTED || config.lastFoldPosture == posture) {
             return
         }
 
-        val bounds = windowManager.currentWindowMetrics.bounds
-        val width = bounds.width()
-        val height = bounds.height()
-        val minDimension = min(width, height).toFloat()
-        val maxDimension = max(width, height).toFloat()
-        val isCoverLike = minDimension > 0 && maxDimension / minDimension > 1.7f
-        val posture = if (isCoverLike) FOLD_POSTURE_COVER else FOLD_POSTURE_OPEN
+        config.viewSelectionWasCustomized = false
+        config.storedView = if (posture == FOLD_POSTURE_COVER) EVENTS_LIST_VIEW else MONTHLY_VIEW
+        config.lastFoldPosture = posture
+    }
 
-        if (config.lastFoldPosture != posture) {
-            config.viewSelectionWasCustomized = false
-            config.storedView = if (isCoverLike) EVENTS_LIST_VIEW else MONTHLY_VIEW
-            config.lastFoldPosture = posture
+    private fun setupDefaultViewForFoldableIfNeeded() {
+        val posture = getCurrentFoldPosture()
+        if (posture == FOLD_POSTURE_UNSUPPORTED || config.lastFoldPosture == posture) {
+            return
+        }
+
+        val previousView = config.storedView
+        config.viewSelectionWasCustomized = false
+        config.storedView = if (posture == FOLD_POSTURE_COVER) EVENTS_LIST_VIEW else MONTHLY_VIEW
+        config.lastFoldPosture = posture
+
+        if (previousView != config.storedView) {
+            binding.calendarFab.beVisibleIf(config.storedView != YEARLY_VIEW && config.storedView != WEEKLY_VIEW)
+            checkSwipeRefreshAvailability()
+            refreshMenuItems()
+            updateViewPager()
+        }
+    }
+
+    private fun getCurrentFoldPosture(): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+            || !packageManager.hasSystemFeature("android.hardware.type.foldable")
+        ) {
+            return FOLD_POSTURE_UNSUPPORTED
+        }
+
+        val smallestScreenWidthDp = resources.configuration.smallestScreenWidthDp
+        if (smallestScreenWidthDp < 500) {
+            return FOLD_POSTURE_COVER
+        }
+
+        val bounds = windowManager.currentWindowMetrics.bounds
+        val minDimension = min(bounds.width(), bounds.height()).toFloat()
+        val maxDimension = max(bounds.width(), bounds.height()).toFloat()
+        return if (minDimension > 0 && maxDimension / minDimension > 1.7f) {
+            FOLD_POSTURE_COVER
+        } else {
+            FOLD_POSTURE_OPEN
         }
     }
 

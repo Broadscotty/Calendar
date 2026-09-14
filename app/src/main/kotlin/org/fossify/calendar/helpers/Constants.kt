@@ -96,6 +96,7 @@ const val REMINDER_SOUND_TITLE = "reminder_sound_title"
 const val VIEW = "view"
 const val VIEW_CUSTOMIZED = "view_customized"
 const val LAST_FOLD_POSTURE = "last_fold_posture"
+const val FOLD_POSTURE_UNSUPPORTED = -1
 const val FOLD_POSTURE_OPEN = 0
 const val FOLD_POSTURE_COVER = 1
 const val LAST_EVENT_REMINDER_MINUTES = "reminder_minutes"
