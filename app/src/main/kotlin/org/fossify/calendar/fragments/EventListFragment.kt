@@ -33,6 +33,7 @@ import org.fossify.calendar.models.Event
 import org.fossify.calendar.models.ListEvent
 import org.fossify.calendar.models.ListItem
 import org.fossify.calendar.models.ListSectionDay
+import org.fossify.calendar.models.ListSectionMonth
 import org.fossify.commons.extensions.areSystemAnimationsEnabled
 import org.fossify.commons.extensions.beGoneIf
 import org.fossify.commons.extensions.beVisibleIf
