@@ -63,6 +63,8 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
 
     private var mDayCode = ""
 
+    private var mToolbarTitle = ""
+
     private lateinit var binding: FragmentEventListBinding
 
     override val viewType = EVENTS_LIST_VIEW
@@ -92,9 +94,9 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     override fun onResume() {
         super.onResume()
         checkEvents()
-        (activity as? MainActivity)?.setToolbarTitle(
-            Formatter.getMonthTitle(requireContext(), DateTime())
-        )
+        val defaultTitle = Formatter.getLongMonthYear(requireContext(), Formatter.getTodayCode())
+        mToolbarTitle = defaultTitle
+        (activity as? MainActivity)?.setToolbarTitle(defaultTitle)
         val use24Hour = requireContext().config.use24HourFormat
         if (use24Hour != use24HourFormat) {
             use24HourFormat = use24Hour
@@ -188,6 +190,11 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
 
                 binding.calendarEventsList.addOnScrollListener(object :
                     RecyclerView.OnScrollListener() {
+                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                        super.onScrolled(recyclerView, dx, dy)
+                        updateToolbarMonth()
+                    }
+
                     override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                         super.onScrollStateChanged(recyclerView, newState)
                         if (!hasBeenScrolled) {
@@ -213,6 +220,35 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                 }
             }
             checkPlaceholderVisibility()
+            updateToolbarMonth()
+        }
+    }
+
+    private fun updateToolbarMonth() {
+        val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
+        val layoutManager = binding.calendarEventsList.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == RecyclerView.NO_POSITION || firstVisiblePosition >= adapter.listItems.size) {
+            return
+        }
+
+        var monthTitle = ""
+        val firstItem = adapter.listItems.getOrNull(firstVisiblePosition)
+        if (firstItem is ListSectionMonth) {
+            monthTitle = firstItem.title
+        } else {
+            for (i in firstVisiblePosition downTo 0) {
+                val item = adapter.listItems.getOrNull(i)
+                if (item is ListSectionDay) {
+                    monthTitle = Formatter.getLongMonthYear(requireContext(), item.code)
+                    break
+                }
+            }
+        }
+
+        if (monthTitle.isNotEmpty() && monthTitle != mToolbarTitle) {
+            mToolbarTitle = monthTitle
+            (activity as? MainActivity)?.setToolbarTitle(monthTitle)
         }
     }
 
