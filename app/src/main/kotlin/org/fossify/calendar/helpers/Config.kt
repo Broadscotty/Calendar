@@ -116,7 +116,7 @@ class Config(context: Context) : BaseConfig(context) {
             .putStringSet(QUICK_FILTER_CALENDARS, quickFilterCalendars).apply()
 
     var quickFilterCalendarsOrder: List<Long>
-        get() = prefs.getString(QUICK_FILTER_CALENDARS_ORDER, "")
+        get() = prefs.getString(QUICK_FILTER_CALENDARS_ORDER, "")!!
             .split(',')
             .mapNotNull { it.toLongOrNull() }
         set(quickFilterCalendarsOrder) = prefs.edit()
