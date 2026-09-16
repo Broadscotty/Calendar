@@ -115,6 +115,14 @@ class Config(context: Context) : BaseConfig(context) {
         set(quickFilterCalendars) = prefs.edit().remove(QUICK_FILTER_CALENDARS)
             .putStringSet(QUICK_FILTER_CALENDARS, quickFilterCalendars).apply()
 
+    var quickFilterCalendarsOrder: List<Long>
+        get() = prefs.getString(QUICK_FILTER_CALENDARS_ORDER, "")
+            .split(',')
+            .mapNotNull { it.toLongOrNull() }
+        set(quickFilterCalendarsOrder) = prefs.edit()
+            .putString(QUICK_FILTER_CALENDARS_ORDER, quickFilterCalendarsOrder.joinToString(","))
+            .apply()
+
     fun addQuickFilterCalendar(type: String) {
         val currQuickFilterCalendars = HashSet(quickFilterCalendars)
         currQuickFilterCalendars.add(type)

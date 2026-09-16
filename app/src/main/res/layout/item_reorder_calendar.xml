@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/reorder_calendar_holder"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:paddingStart="@dimen/normal_margin"
+    android:paddingTop="@dimen/small_margin"
+    android:paddingEnd="@dimen/normal_margin"
+    android:paddingBottom="@dimen/small_margin">
+
+    <ImageView
+        android:id="@+id/reorder_calendar_color"
+        android:layout_width="@dimen/color_sample_size"
+        android:layout_height="@dimen/color_sample_size"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:clickable="false" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/reorder_calendar_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toStartOf="@+id/reorder_calendar_drag_handle"
+        android:layout_toEndOf="@+id/reorder_calendar_color"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="@dimen/medium_margin"
+        android:layout_marginEnd="@dimen/medium_margin"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingStart="@dimen/small_margin" />
+
+    <ImageView
+        android:id="@+id/reorder_calendar_drag_handle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:contentDescription="@string/reorder_quick_filter_event_types_hint"
+        android:padding="@dimen/medium_margin"
+        android:src="@drawable/ic_drag_handle_vector"
+        android:tint="?attr/colorControlNormal" />
+
+</RelativeLayout>

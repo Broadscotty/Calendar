@@ -46,7 +46,15 @@ class QuickFilterCalendarAdapter(
             }
         }
 
-        quickFilterCalendars.sortBy { it.title.lowercase() }
+        val orderIndexes = activity.config.quickFilterCalendarsOrder
+            .mapIndexed { index, id -> id to index }
+            .toMap()
+        quickFilterCalendars.sortWith(
+            compareBy(
+                { orderIndexes[it.id] ?: Int.MAX_VALUE },
+                { it.title.lowercase() }
+            )
+        )
     }
 
     private fun toggleItemSelection(select: Boolean, calendar: CalendarEntity, pos: Int) {

@@ -16,6 +16,7 @@ import org.fossify.calendar.dialogs.ManageAutomaticBackupsDialog
 import org.fossify.calendar.dialogs.ManageSyncedCalendarsDialog
 import org.fossify.calendar.dialogs.SelectCalendarDialog
 import org.fossify.calendar.dialogs.SelectCalendarsDialog
+import org.fossify.calendar.dialogs.ReorderCalendarsDialog
 import org.fossify.calendar.extensions.calDAVHelper
 import org.fossify.calendar.extensions.calendarsDB
 import org.fossify.calendar.extensions.cancelScheduledAutomaticBackup
@@ -184,6 +185,7 @@ class SettingsActivity : SimpleActivity() {
         setupLanguage()
         setupManageCalendars()
         setupManageQuickFilterCalendars()
+        setupReorderQuickFilterCalendars()
         setupHourFormat()
         setupAllowCreatingTasks()
         setupStartWeekOn()
@@ -482,6 +484,40 @@ class SettingsActivity : SimpleActivity() {
     private fun showQuickFilterPicker() {
         SelectCalendarsDialog(this, config.quickFilterCalendars) {
             config.quickFilterCalendars = it
+        }
+    }
+
+    private fun setupReorderQuickFilterCalendars() = binding.apply {
+        settingsReorderQuickFilterCalendarsHolder.setOnClickListener {
+            showReorderQuickFilterPicker()
+        }
+
+        eventsHelper.getCalendars(this@SettingsActivity, false) {
+            settingsReorderQuickFilterCalendarsHolder.beGoneIf(it.size < 2)
+        }
+    }
+
+    private fun showReorderQuickFilterPicker() {
+        eventsHelper.getCalendars(this, false) { calendars ->
+            val quickFilterIds = config.quickFilterCalendars.mapNotNull { it.toLongOrNull() }.toHashSet()
+            val orderedIds = config.quickFilterCalendarsOrder
+            val quickFilterCalendars = ArrayList<CalendarEntity>()
+
+            orderedIds.forEach { id ->
+                calendars.firstOrNull { it.id == id }?.let { quickFilterCalendars.add(it) }
+            }
+
+            calendars
+                .filter { calendar ->
+                    val id = calendar.id
+                    id != null && id in quickFilterIds && id !in orderedIds
+                }
+                .sortedBy { it.title.lowercase() }
+                .forEach { quickFilterCalendars.add(it) }
+
+            ReorderCalendarsDialog(this@SettingsActivity, quickFilterCalendars) {
+                config.quickFilterCalendarsOrder = it
+            }
         }
     }
 
