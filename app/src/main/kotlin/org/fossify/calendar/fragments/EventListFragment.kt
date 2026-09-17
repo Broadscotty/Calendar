@@ -29,6 +29,7 @@ import org.fossify.calendar.helpers.INITIAL_EVENTS
 import org.fossify.calendar.helpers.MIN_EVENTS_TRESHOLD
 import org.fossify.calendar.helpers.UPDATE_BOTTOM
 import org.fossify.calendar.helpers.UPDATE_TOP
+import org.fossify.calendar.helpers.getNowSeconds
 import org.fossify.calendar.models.Event
 import org.fossify.calendar.models.ListEvent
 import org.fossify.calendar.models.ListItem
@@ -171,6 +172,8 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                     binding.calendarEventsList.adapter = this
                     if (mDayCode.isNotEmpty()) {
                         scrollToAnchorDay()
+                    } else {
+                        scrollToNextAppointment()
                     }
                 }
 
@@ -274,6 +277,36 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private fun scrollToAnchorDay() {
         val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
         val targetIndex = adapter.listItems.indexOfFirst { it is ListSectionDay && it.code >= mDayCode }
+        if (targetIndex != -1) {
+            binding.calendarEventsList.post {
+                (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
+                    targetIndex,
+                    0
+                )
+                binding.calendarEventsList.onGlobalLayout {
+                    hasBeenScrolled = false
+                    (activity as? MainActivity)?.refreshItems()
+                    (activity as? MainActivity)?.refreshMenuItems()
+                }
+            }
+        }
+    }
+
+    private fun scrollToNextAppointment() {
+        val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
+        val now = getNowSeconds()
+        val nextTimedAppointmentIndex = adapter.listItems.indexOfFirst {
+            it is ListEvent && !it.isAllDay && it.endTS > now
+        }
+        val nextEventIndex = adapter.listItems.indexOfFirst {
+            it is ListEvent && it.endTS > now
+        }
+        val targetIndex = if (nextTimedAppointmentIndex != -1) {
+            nextTimedAppointmentIndex
+        } else {
+            nextEventIndex
+        }
+
         if (targetIndex != -1) {
             binding.calendarEventsList.post {
                 (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
