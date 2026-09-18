@@ -24,6 +24,17 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
 
+            - name: Restore signing keystore
+              if: ${{ secrets.SIGNING_STORE_B64 != '' }}
+              run: |
+                  mkdir -p debug-signing
+                  echo "${{ secrets.SIGNING_STORE_B64 }}" | base64 --decode > debug-signing/calendar-release.p12
+                  echo "storeFile=debug-signing/calendar-release.p12
+                    storePassword=${{ secrets.SIGNING_STORE_PASSWORD }}
+                    keyAlias=calendar
+                    keyPassword=${{ secrets.SIGNING_KEY_PASSWORD }}
+                    storeType=pkcs12" > keystore.properties
+
             - name: Build debug APK
               run: ./gradlew assembleFossDebug
 
