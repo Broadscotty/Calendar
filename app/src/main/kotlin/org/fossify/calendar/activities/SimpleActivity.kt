@@ -24,7 +24,7 @@ open class SimpleActivity : BaseSimpleActivity() {
     val calDAVRefreshHandler = Handler()
     var calDAVRefreshCallback: (() -> Unit)? = null
 
-    override fun getAppIconIDs() = ArrayList(19) { R.drawable.ic_launcher_foreground }
+    override fun getAppIconIDs() = arrayListOf<Int>().apply { repeat(19) { add(R.drawable.ic_launcher_foreground) } }
 
     override fun getAppLauncherName() = getString(R.string.app_launcher_name)
 
