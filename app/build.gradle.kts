@@ -47,8 +47,9 @@ android {
             register("release") {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
+                storeType = keystoreProperties.getProperty("storeType", "jks")
             }
         } else if (hasSigningVars()) {
             register("release") {
@@ -70,6 +71,9 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            if (keystorePropertiesFile.exists() || hasSigningVars()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
             isMinifyEnabled = true
