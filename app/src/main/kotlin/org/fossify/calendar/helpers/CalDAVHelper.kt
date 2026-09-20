@@ -38,7 +38,6 @@ import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.toast
 import org.fossify.commons.helpers.PERMISSION_READ_CALENDAR
 import org.fossify.commons.helpers.PERMISSION_WRITE_CALENDAR
-import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
 import kotlin.math.max
@@ -234,6 +233,8 @@ class CalDAVHelper(val context: Context) {
             }
 
             val description = cursor.getStringValue(Events.DESCRIPTION) ?: ""
+            val startTS = cursor.getLongValue(Events.DTSTART) / 1000L
+            var endTS = cursor.getLongValue(Events.DTEND) / 1000L
             val allDay = cursor.getIntValue(Events.ALL_DAY)
             val rrule = cursor.getStringValue(Events.RRULE) ?: ""
             val location = cursor.getStringValue(Events.EVENT_LOCATION) ?: ""
@@ -246,42 +247,17 @@ class CalDAVHelper(val context: Context) {
             val status = cursor.getIntValueOrNull(Events.STATUS) ?: Events.STATUS_CONFIRMED
             val color = cursor.getIntValueOrNull(Events.EVENT_COLOR) ?: 0
 
+            if (endTS == 0L) {
+                val duration = cursor.getStringValue(Events.DURATION) ?: ""
+                endTS = startTS + Parser().parseDurationSeconds(duration)
+            }
+
             val reminder1 = reminders.getOrNull(0)
             val reminder2 = reminders.getOrNull(1)
             val reminder3 = reminders.getOrNull(2)
             val importId = getCalDAVEventImportId(calendarId, id)
             val eventTimeZone = cursor.getStringValue(Events.EVENT_TIMEZONE)
                 ?: cursor.getStringValue(Events.CALENDAR_TIME_ZONE) ?: DateTimeZone.getDefault().id
-
-            // Read raw DTSTART/DTEND and use EVENT_TIMEZONE to interpret them correctly.
-            // Some sync adapters (e.g. Google Calendar syncing Outlook) store DTSTART as
-            // the event-local time expressed as UTC millis, not as true UTC millis.
-            // Without this correction, PM events can appear shifted by the timezone offset.
-            val eventTz = try {
-                DateTimeZone.forID(eventTimeZone)
-            } catch (e: Exception) {
-                DateTimeZone.UTC
-            }
-            val rawStart = cursor.getLongValue(Events.DTSTART)
-            val rawEnd = cursor.getLongValue(Events.DTEND)
-            val startTS = if (allDay == 0 && rawStart != 0L) {
-                // For timed events, reinterpret raw millis as wall-clock time in the event's timezone
-                val wallClock = DateTime(rawStart, DateTimeZone.UTC)
-                wallClock.withZoneRetainFields(eventTz).millis / 1000L
-            } else {
-                rawStart / 1000L
-            }
-            var endTS = if (allDay == 0 && rawEnd != 0L) {
-                val wallClock = DateTime(rawEnd, DateTimeZone.UTC)
-                wallClock.withZoneRetainFields(eventTz).millis / 1000L
-            } else {
-                rawEnd / 1000L
-            }
-
-            if (endTS == 0L) {
-                val duration = cursor.getStringValue(Events.DURATION) ?: ""
-                endTS = startTS + Parser().parseDurationSeconds(duration)
-            }
 
             val source = "$CALDAV-$calendarId"
             val repeatRule = Parser().parseRepeatInterval(rrule, startTS)
