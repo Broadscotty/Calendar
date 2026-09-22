@@ -2,6 +2,7 @@ package org.fossify.calendar.fragments
 
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.util.Log
 import android.os.Handler
 import android.view.LayoutInflater
 import android.view.View
@@ -52,6 +53,8 @@ import org.fossify.commons.views.MyRecyclerView
 import org.joda.time.DateTime
 import kotlin.math.max
 import kotlin.math.min
+
+private const val TAG = "CalSL"
 
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
@@ -307,13 +310,49 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
             nextEventIndex
         }
 
-        if (targetIndex != -1) {
+        // Temporary diagnostics for the "no snap in simple view" bug. Remove once fixed.
+        Log.i(
+            TAG,
+            "snap: now=$now (${Formatter.getDateTimeFromTS(now)}), " +
+                "items=${adapter.listItems.size}, timedIdx=$nextTimedAppointmentIndex, " +
+                "anyIdx=$nextEventIndex, mDayCode='$mDayCode', " +
+                "window=[${Formatter.getDateTimeFromTS(minFetchedTS)}..${Formatter.getDateTimeFromTS(maxFetchedTS)}]"
+        )
+        adapter.listItems.filterIsInstance<ListEvent>().take(12).forEachIndexed { i, e ->
+            Log.i(
+                TAG,
+                "snap item[$i]: '${e.title.take(30)}' start=${e.startTS} (${Formatter.getDateTimeFromTS(e.startTS)}) " +
+                    "end=${e.endTS} (${Formatter.getDateTimeFromTS(e.endTS)}) allDay=${e.isAllDay} " +
+                    "end>now=${e.endTS > now}"
+            )
+        }
+
+        // Fallback: if nothing has endTS > now (e.g. shifted timestamps), at least
+        // jump to today's section instead of leaving the list at the top of yesterday.
+        val scrollIndex = if (targetIndex != -1) {
+            targetIndex
+        } else {
+            adapter.listItems.indexOfFirst { it is ListSectionDay && !it.isPastSection }
+        }
+        Log.i(TAG, "snap: targetIndex=$targetIndex scrollIndex=$scrollIndex")
+
+        if (scrollIndex != -1) {
             binding.calendarEventsList.post {
                 (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
-                    targetIndex,
+                    scrollIndex,
                     0
                 )
                 binding.calendarEventsList.onGlobalLayout {
+                    // Re-assert after layout: state restoration or the layout animation
+                    // can win over the post() scroll and dump the list back to the top.
+                    val firstVisible = (binding.calendarEventsList.layoutManager as? LinearLayoutManager)
+                        ?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+                    Log.i(TAG, "snap: after layout firstVisible=$firstVisible (wanted $scrollIndex)")
+                    if (firstVisible != scrollIndex && !hasBeenScrolled) {
+                        (binding.calendarEventsList.layoutManager as LinearLayoutManager)
+                            .scrollToPositionWithOffset(scrollIndex, 0)
+                        Log.i(TAG, "snap: re-asserted scroll to $scrollIndex")
+                    }
                     hasBeenScrolled = false
                     (activity as? MainActivity)?.refreshItems()
                     (activity as? MainActivity)?.refreshMenuItems()
