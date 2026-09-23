@@ -55,6 +55,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 private const val TAG = "CalSL"
+private const val DEBUG_LOG_EVENT_COUNT = 12
+private const val DEBUG_LOG_TITLE_LEN = 30
 
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
@@ -318,10 +320,11 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                 "anyIdx=$nextEventIndex, mDayCode='$mDayCode', " +
                 "window=[${Formatter.getDateTimeFromTS(minFetchedTS)}..${Formatter.getDateTimeFromTS(maxFetchedTS)}]"
         )
-        adapter.listItems.filterIsInstance<ListEvent>().take(12).forEachIndexed { i, e ->
+        adapter.listItems.filterIsInstance<ListEvent>().take(DEBUG_LOG_EVENT_COUNT)
+            .forEachIndexed { i, e ->
             Log.i(
                 TAG,
-                "snap item[$i]: '${e.title.take(30)}' start=${e.startTS} (${Formatter.getDateTimeFromTS(e.startTS)}) " +
+                "snap item[$i]: '${e.title.take(DEBUG_LOG_TITLE_LEN)}' start=${e.startTS} (${Formatter.getDateTimeFromTS(e.startTS)}) " +
                     "end=${e.endTS} (${Formatter.getDateTimeFromTS(e.endTS)}) allDay=${e.isAllDay} " +
                     "end>now=${e.endTS > now}"
             )
