@@ -319,6 +319,11 @@ class Config(context: Context) : BaseConfig(context) {
         set(highlightWeekendsColor) = prefs.edit()
             .putInt(HIGHLIGHT_WEEKENDS_COLOR, highlightWeekendsColor).apply()
 
+    // 0 = never picked, means "use the app's primary color" (the old behaviour)
+    var todayCircleColor: Int
+        get() = prefs.getInt(TODAY_CIRCLE_COLOR, 0)
+        set(todayCircleColor) = prefs.edit().putInt(TODAY_CIRCLE_COLOR, todayCircleColor).apply()
+
     var lastUsedEventSpan: Int
         get() = prefs.getInt(LAST_USED_EVENT_SPAN, YEAR_SECONDS)
         set(lastUsedEventSpan) = prefs.edit().putInt(LAST_USED_EVENT_SPAN, lastUsedEventSpan)

@@ -254,6 +254,32 @@
 
             </RelativeLayout>
 
+            <RelativeLayout
+                android:id="@+id/settings_today_circle_color_holder"
+                style="@style/SettingsHolderTextViewStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <org.fossify.commons.views.MyTextView
+                    android:id="@+id/settings_today_circle_color_text_label"
+                    style="@style/SettingsTextLabelStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignTop="@+id/settings_today_circle_color"
+                    android:layout_alignBottom="@+id/settings_today_circle_color"
+                    android:layout_toStartOf="@+id/settings_today_circle_color"
+                    android:gravity="center_vertical|start"
+                    android:text="@string/today_circle_color" />
+
+                <ImageView
+                    android:id="@+id/settings_today_circle_color"
+                    android:layout_width="@dimen/color_sample_size"
+                    android:layout_height="@dimen/color_sample_size"
+                    android:layout_alignParentEnd="true"
+                    android:clickable="false" />
+
+            </RelativeLayout>
+
             <include
                 android:id="@+id/settings_general_settings_divider"
                 layout="@layout/divider" />

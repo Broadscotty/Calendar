@@ -53,6 +53,7 @@ import org.joda.time.DateTime
 import kotlin.math.max
 import kotlin.math.min
 
+
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
     private var minFetchedTS = 0L
@@ -295,25 +296,45 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private fun scrollToNextAppointment() {
         val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
         val now = getNowSeconds()
-        val nextTimedAppointmentIndex = adapter.listItems.indexOfFirst {
-            it is ListEvent && !it.isAllDay && it.endTS > now
-        }
-        val nextEventIndex = adapter.listItems.indexOfFirst {
-            it is ListEvent && it.endTS > now
-        }
-        val targetIndex = if (nextTimedAppointmentIndex != -1) {
-            nextTimedAppointmentIndex
+        // Only consider events that STARTED TODAY or later. The fetch window includes
+        // multi-day events from previous days (e.g. a parking booking that started
+        // days ago but ends tonight): those sort ABOVE today's sections, so picking
+        // them scrolled the list into yesterday instead of to the next meeting.
+        val todayStartTS = Formatter.getDayStartTS(Formatter.getTodayCode())
+        val upcoming = adapter.listItems.filterIsInstance<ListEvent>().filter { it.endTS > now }
+        val pick = upcoming.firstOrNull { it.startTS >= todayStartTS && !it.isAllDay }
+            ?: upcoming.firstOrNull { it.startTS >= todayStartTS }
+            ?: upcoming.firstOrNull { !it.isAllDay }
+            ?: upcoming.firstOrNull()
+        val targetIndex = if (pick != null) {
+            adapter.listItems.indexOfFirst { it === pick }
         } else {
-            nextEventIndex
+            -1
         }
 
-        if (targetIndex != -1) {
+        // Fallback: if nothing has endTS > now (e.g. shifted timestamps), at least
+        // jump to today's section instead of leaving the list at the top of yesterday.
+        val scrollIndex = if (targetIndex != -1) {
+            targetIndex
+        } else {
+            adapter.listItems.indexOfFirst { it is ListSectionDay && !it.isPastSection }
+        }
+
+        if (scrollIndex != -1) {
             binding.calendarEventsList.post {
                 (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
-                    targetIndex,
+                    scrollIndex,
                     0
                 )
                 binding.calendarEventsList.onGlobalLayout {
+                    // Re-assert after layout: state restoration or the layout animation
+                    // can win over the post() scroll and dump the list back to the top.
+                    val firstVisible = (binding.calendarEventsList.layoutManager as? LinearLayoutManager)
+                        ?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+                    if (firstVisible != scrollIndex && !hasBeenScrolled) {
+                        (binding.calendarEventsList.layoutManager as LinearLayoutManager)
+                        .scrollToPositionWithOffset(scrollIndex, 0)
+                    }
                     hasBeenScrolled = false
                     (activity as? MainActivity)?.refreshItems()
                     (activity as? MainActivity)?.refreshMenuItems()
@@ -360,6 +381,13 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     }
 
     override fun goToToday() {
+        // In the simple all-events list, "Today" means current time: reuse the snap
+        // so it lands on what is running now or the next appointment. The snap's own
+        // fallback still jumps to the top of today's section when nothing is upcoming.
+        if (mDayCode.isEmpty()) {
+            scrollToNextAppointment()
+            return
+        }
         val listItems = requireContext().getEventListItems(mEvents)
         val firstNonPastSectionIndex =
             listItems.indexOfFirst { it is ListSectionDay && !it.isPastSection }
