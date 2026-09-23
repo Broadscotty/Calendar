@@ -63,6 +63,7 @@ import org.fossify.calendar.helpers.SHOW_GRID
 import org.fossify.calendar.helpers.SHOW_MIDNIGHT_SPANNING_EVENTS_AT_TOP
 import org.fossify.calendar.helpers.START_WEEKLY_AT
 import org.fossify.calendar.helpers.START_WEEK_WITH_CURRENT_DAY
+import org.fossify.calendar.helpers.TODAY_CIRCLE_COLOR
 import org.fossify.calendar.helpers.USE_PREVIOUS_EVENT_REMINDERS
 import org.fossify.calendar.helpers.VIBRATE
 import org.fossify.calendar.helpers.WEEKLY_VIEW
@@ -191,6 +192,7 @@ class SettingsActivity : SimpleActivity() {
         setupStartWeekOn()
         setupHighlightWeekends()
         setupHighlightWeekendsColor()
+        setupTodayCircleColor()
         setupDeleteAllEvents()
         setupDisplayDescription()
         setupReplaceDescription()
@@ -541,6 +543,23 @@ class SettingsActivity : SimpleActivity() {
                 val firstDayOfWeek = any as Int
                 config.firstDayOfWeek = firstDayOfWeek
                 settingsStartWeekOn.text = getDayOfWeekString(firstDayOfWeek)
+            }
+        }
+    }
+
+    private fun setupTodayCircleColor() = binding.apply {
+        val currentColor =
+            if (config.todayCircleColor == 0) getProperPrimaryColor() else config.todayCircleColor
+        settingsTodayCircleColor.setFillWithStroke(currentColor, getProperBackgroundColor())
+        settingsTodayCircleColorHolder.setOnClickListener {
+            ColorPickerDialog(
+                activity = this@SettingsActivity,
+                color = currentColor
+            ) { wasPositivePressed, color ->
+                if (wasPositivePressed) {
+                    config.todayCircleColor = color
+                    settingsTodayCircleColor.setFillWithStroke(color, getProperBackgroundColor())
+                }
             }
         }
     }
@@ -1217,6 +1236,7 @@ class SettingsActivity : SimpleActivity() {
                 put(FIRST_DAY_OF_WEEK, config.firstDayOfWeek)
                 put(HIGHLIGHT_WEEKENDS, config.highlightWeekends)
                 put(HIGHLIGHT_WEEKENDS_COLOR, config.highlightWeekendsColor)
+                put(TODAY_CIRCLE_COLOR, config.todayCircleColor)
                 put(ALLOW_CREATING_TASKS, config.allowCreatingTasks)
             }
 
@@ -1333,6 +1353,7 @@ class SettingsActivity : SimpleActivity() {
                 FIRST_DAY_OF_WEEK -> config.firstDayOfWeek = value.toInt()
                 HIGHLIGHT_WEEKENDS -> config.highlightWeekends = value.toBoolean()
                 HIGHLIGHT_WEEKENDS_COLOR -> config.highlightWeekendsColor = value.toInt()
+                TODAY_CIRCLE_COLOR -> config.todayCircleColor = value.toInt()
                 ALLOW_CREATING_TASKS -> config.allowCreatingTasks = value.toBoolean()
             }
         }

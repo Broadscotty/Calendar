@@ -320,7 +320,13 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
                     val isDaySelected = selectedDayCoords.x != -1 && x == selectedDayCoords.x && y == selectedDayCoords.y
                     when {
                         isDaySelected -> {
-                            canvas.drawCircle(circleCenterX, circleCenterY, numberPaint.textSize * 0.8f, circleStrokePaint)
+                            val strokePaint =
+                                if (day.isToday && config.todayCircleColor != 0) {
+                                    Paint(circleStrokePaint).apply { color = config.todayCircleColor }
+                                } else {
+                                    circleStrokePaint
+                                }
+                            canvas.drawCircle(circleCenterX, circleCenterY, numberPaint.textSize * 0.8f, strokePaint)
                             if (day.isToday) {
                                 numberPaint.color = textColor
                             }
@@ -628,7 +634,8 @@ class MonthView(context: Context, attrs: AttributeSet, defStyle: Int) : View(con
 
     private fun getCirclePaint(day: DayMonthly): Paint {
         val curPaint = Paint(textPaint)
-        var paintColor = primaryColor
+        val configuredColor = config.todayCircleColor
+        var paintColor = if (configuredColor != 0) configuredColor else primaryColor
         if (!day.isThisMonth) {
             paintColor = paintColor.adjustAlpha(MEDIUM_ALPHA)
         }
