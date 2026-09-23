@@ -301,24 +301,28 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private fun scrollToNextAppointment() {
         val adapter = binding.calendarEventsList.adapter as? EventListAdapter ?: return
         val now = getNowSeconds()
-        val nextTimedAppointmentIndex = adapter.listItems.indexOfFirst {
-            it is ListEvent && !it.isAllDay && it.endTS > now
-        }
-        val nextEventIndex = adapter.listItems.indexOfFirst {
-            it is ListEvent && it.endTS > now
-        }
-        val targetIndex = if (nextTimedAppointmentIndex != -1) {
-            nextTimedAppointmentIndex
+        // Only consider events that STARTED TODAY or later. The fetch window includes
+        // multi-day events from previous days (e.g. a parking booking that started
+        // days ago but ends tonight): those sort ABOVE today's sections, so picking
+        // them scrolled the list into yesterday instead of to the next meeting.
+        val todayStartTS = Formatter.getDayStartTS(Formatter.getTodayCode())
+        val upcoming = adapter.listItems.filterIsInstance<ListEvent>().filter { it.endTS > now }
+        val pick = upcoming.firstOrNull { it.startTS >= todayStartTS && !it.isAllDay }
+            ?: upcoming.firstOrNull { it.startTS >= todayStartTS }
+            ?: upcoming.firstOrNull { !it.isAllDay }
+            ?: upcoming.firstOrNull()
+        val targetIndex = if (pick != null) {
+            adapter.listItems.indexOfFirst { it === pick }
         } else {
-            nextEventIndex
+            -1
         }
 
         // Temporary diagnostics for the "no snap in simple view" bug. Remove once fixed.
         Log.i(
             TAG,
             "snap: now=$now (${Formatter.getDateTimeFromTS(now)}), " +
-                "items=${adapter.listItems.size}, timedIdx=$nextTimedAppointmentIndex, " +
-                "anyIdx=$nextEventIndex, mDayCode='$mDayCode', " +
+                "items=${adapter.listItems.size}, todayFrom=${Formatter.getDateTimeFromTS(todayStartTS)}, " +
+                "pick=${pick?.title?.take(DEBUG_LOG_TITLE_LEN)}, mDayCode='$mDayCode', " +
                 "window=[${Formatter.getDateTimeFromTS(minFetchedTS)}..${Formatter.getDateTimeFromTS(maxFetchedTS)}]"
         )
         adapter.listItems.filterIsInstance<ListEvent>().take(DEBUG_LOG_EVENT_COUNT)
@@ -341,12 +345,15 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         Log.i(TAG, "snap: targetIndex=$targetIndex scrollIndex=$scrollIndex")
 
         // On-screen overlay so diagnostics can be read without adb (screenshot it).
-        val nextEvent = adapter.listItems.filterIsInstance<ListEvent>().firstOrNull { it.endTS > now }
+        val nextEvent = pick
         val fmt = { ts: Long -> Formatter.getDateTimeFromTS(ts).toString("HH:mm d/MM") }
         val diag = buildString {
             appendLine("SNAP debug (screenshot me)")
             appendLine("now ${fmt(now)}  items=${adapter.listItems.size}  day='$mDayCode'")
-            appendLine("timed=$nextTimedAppointmentIndex any=$nextEventIndex scroll=$scrollIndex")
+            appendLine(
+                "pick=${pick?.let { "${it.title.take(DEBUG_LOG_TITLE_LEN)} ${fmt(it.startTS)}-${fmt(it.endTS)}" } ?: "NONE"} " +
+                    "target=$targetIndex scroll=$scrollIndex"
+            )
             if (nextEvent != null) {
                 appendLine(
                     "next: ${nextEvent.title.take(DEBUG_LOG_TITLE_LEN)} end ${fmt(nextEvent.endTS)} " +
