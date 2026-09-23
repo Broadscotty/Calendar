@@ -45,16 +45,4 @@
         android:textSize="@dimen/bigger_text_size"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/calendar_snap_debug"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:background="#CC000000"
-        android:padding="6dp"
-        android:textColor="#FFFFFF"
-        android:textSize="11sp"
-        android:typeface="monospace"
-        android:visibility="gone" />
-
 </RelativeLayout>

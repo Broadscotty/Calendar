@@ -2,7 +2,6 @@ package org.fossify.calendar.fragments
 
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.util.Log
 import android.os.Handler
 import android.view.LayoutInflater
 import android.view.View
@@ -54,10 +53,6 @@ import org.joda.time.DateTime
 import kotlin.math.max
 import kotlin.math.min
 
-private const val TAG = "CalSL"
-private const val DEBUG_LOG_EVENT_COUNT = 12
-private const val DEBUG_LOG_TITLE_LEN = 30
-private const val SECONDS_PER_MINUTE = 60L
 
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
@@ -317,24 +312,6 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
             -1
         }
 
-        // Temporary diagnostics for the "no snap in simple view" bug. Remove once fixed.
-        Log.i(
-            TAG,
-            "snap: now=$now (${Formatter.getDateTimeFromTS(now)}), " +
-                "items=${adapter.listItems.size}, todayFrom=${Formatter.getDateTimeFromTS(todayStartTS)}, " +
-                "pick=${pick?.title?.take(DEBUG_LOG_TITLE_LEN)}, mDayCode='$mDayCode', " +
-                "window=[${Formatter.getDateTimeFromTS(minFetchedTS)}..${Formatter.getDateTimeFromTS(maxFetchedTS)}]"
-        )
-        adapter.listItems.filterIsInstance<ListEvent>().take(DEBUG_LOG_EVENT_COUNT)
-            .forEachIndexed { i, e ->
-            Log.i(
-                TAG,
-                "snap item[$i]: '${e.title.take(DEBUG_LOG_TITLE_LEN)}' start=${e.startTS} (${Formatter.getDateTimeFromTS(e.startTS)}) " +
-                    "end=${e.endTS} (${Formatter.getDateTimeFromTS(e.endTS)}) allDay=${e.isAllDay} " +
-                    "end>now=${e.endTS > now}"
-            )
-        }
-
         // Fallback: if nothing has endTS > now (e.g. shifted timestamps), at least
         // jump to today's section instead of leaving the list at the top of yesterday.
         val scrollIndex = if (targetIndex != -1) {
@@ -342,29 +319,6 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         } else {
             adapter.listItems.indexOfFirst { it is ListSectionDay && !it.isPastSection }
         }
-        Log.i(TAG, "snap: targetIndex=$targetIndex scrollIndex=$scrollIndex")
-
-        // On-screen overlay so diagnostics can be read without adb (screenshot it).
-        val nextEvent = pick
-        val fmt = { ts: Long -> Formatter.getDateTimeFromTS(ts).toString("HH:mm d/MM") }
-        val diag = buildString {
-            appendLine("SNAP debug (screenshot me)")
-            appendLine("now ${fmt(now)}  items=${adapter.listItems.size}  day='$mDayCode'")
-            appendLine(
-                "pick=${pick?.let { "${it.title.take(DEBUG_LOG_TITLE_LEN)} ${fmt(it.startTS)}-${fmt(it.endTS)}" } ?: "NONE"} " +
-                    "target=$targetIndex scroll=$scrollIndex"
-            )
-            if (nextEvent != null) {
-                appendLine(
-                    "next: ${nextEvent.title.take(DEBUG_LOG_TITLE_LEN)} end ${fmt(nextEvent.endTS)} " +
-                        "(+${(nextEvent.endTS - now) / SECONDS_PER_MINUTE}m)"
-                )
-            } else {
-                appendLine("next: NONE - no event with end>now")
-            }
-        }
-        binding.calendarSnapDebug.text = diag
-        binding.calendarSnapDebug.visibility = View.VISIBLE
 
         if (scrollIndex != -1) {
             binding.calendarEventsList.post {
@@ -377,13 +331,9 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                     // can win over the post() scroll and dump the list back to the top.
                     val firstVisible = (binding.calendarEventsList.layoutManager as? LinearLayoutManager)
                         ?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
-                    Log.i(TAG, "snap: after layout firstVisible=$firstVisible (wanted $scrollIndex)")
-                    binding.calendarSnapDebug.text = diag + "afterLayout first=$firstVisible"
-                    binding.calendarSnapDebug.visibility = View.VISIBLE
                     if (firstVisible != scrollIndex && !hasBeenScrolled) {
                         (binding.calendarEventsList.layoutManager as LinearLayoutManager)
-                            .scrollToPositionWithOffset(scrollIndex, 0)
-                        Log.i(TAG, "snap: re-asserted scroll to $scrollIndex")
+                        .scrollToPositionWithOffset(scrollIndex, 0)
                     }
                     hasBeenScrolled = false
                     (activity as? MainActivity)?.refreshItems()
@@ -431,6 +381,13 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     }
 
     override fun goToToday() {
+        // In the simple all-events list, "Today" means current time: reuse the snap
+        // so it lands on what is running now or the next appointment. The snap's own
+        // fallback still jumps to the top of today's section when nothing is upcoming.
+        if (mDayCode.isEmpty()) {
+            scrollToNextAppointment()
+            return
+        }
         val listItems = requireContext().getEventListItems(mEvents)
         val firstNonPastSectionIndex =
             listItems.indexOfFirst { it is ListSectionDay && !it.isPastSection }
