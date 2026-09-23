@@ -57,6 +57,7 @@ import kotlin.math.min
 private const val TAG = "CalSL"
 private const val DEBUG_LOG_EVENT_COUNT = 12
 private const val DEBUG_LOG_TITLE_LEN = 30
+private const val SECONDS_PER_MINUTE = 60L
 
 class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
     private var mEvents = ArrayList<Event>()
@@ -339,6 +340,25 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
         }
         Log.i(TAG, "snap: targetIndex=$targetIndex scrollIndex=$scrollIndex")
 
+        // On-screen overlay so diagnostics can be read without adb (screenshot it).
+        val nextEvent = adapter.listItems.filterIsInstance<ListEvent>().firstOrNull { it.endTS > now }
+        val fmt = { ts: Long -> Formatter.getDateTimeFromTS(ts).toString("HH:mm d/MM") }
+        val diag = buildString {
+            appendLine("SNAP debug (screenshot me)")
+            appendLine("now ${fmt(now)}  items=${adapter.listItems.size}  day='$mDayCode'")
+            appendLine("timed=$nextTimedAppointmentIndex any=$nextEventIndex scroll=$scrollIndex")
+            if (nextEvent != null) {
+                appendLine(
+                    "next: ${nextEvent.title.take(DEBUG_LOG_TITLE_LEN)} end ${fmt(nextEvent.endTS)} " +
+                        "(+${(nextEvent.endTS - now) / SECONDS_PER_MINUTE}m)"
+                )
+            } else {
+                appendLine("next: NONE - no event with end>now")
+            }
+        }
+        binding.calendarSnapDebug.text = diag
+        binding.calendarSnapDebug.visibility = View.VISIBLE
+
         if (scrollIndex != -1) {
             binding.calendarEventsList.post {
                 (binding.calendarEventsList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
@@ -351,6 +371,8 @@ class EventListFragment : MyFragmentHolder(), RefreshRecyclerViewListener {
                     val firstVisible = (binding.calendarEventsList.layoutManager as? LinearLayoutManager)
                         ?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
                     Log.i(TAG, "snap: after layout firstVisible=$firstVisible (wanted $scrollIndex)")
+                    binding.calendarSnapDebug.text = diag + "afterLayout first=$firstVisible"
+                    binding.calendarSnapDebug.visibility = View.VISIBLE
                     if (firstVisible != scrollIndex && !hasBeenScrolled) {
                         (binding.calendarEventsList.layoutManager as LinearLayoutManager)
                             .scrollToPositionWithOffset(scrollIndex, 0)
